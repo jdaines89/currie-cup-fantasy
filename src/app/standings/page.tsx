@@ -7,6 +7,7 @@ export default function StandingsPage() {
   const teams = new Map(listTeams().map((t) => [t.id, t]));
   const log = buildStandings();
   const round = latestCompletedRound();
+  const allExact = log.every((row) => row.points_exact);
 
   return (
     <>
@@ -20,7 +21,7 @@ export default function StandingsPage() {
               <th className="num">P</th><th className="num">W</th>
               <th className="num">D</th><th className="num">L</th>
               <th className="num">PF</th><th className="num">PA</th>
-              <th className="num">Diff</th><th className="num">Pts*</th>
+              <th className="num">Diff</th><th className="num">{allExact ? "Pts" : "Pts*"}</th>
             </tr>
           </thead>
           <tbody>
@@ -35,22 +36,32 @@ export default function StandingsPage() {
                 <td className="num">{row.points_for}</td>
                 <td className="num">{row.points_against}</td>
                 <td className="num">{signed(row.diff)}</td>
-                <td className="num">{row.estimated_points}</td>
+                <td className="num">{row.estimated_points}{!row.points_exact && "*"}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
 
-      <div className="notice">
-        <strong>* Points leave out the try bonus.</strong> Four for a win, two for a draw, one
-        for losing by seven or less &mdash; all exact, read straight off the score. The real
-        Currie Cup also awards one point for scoring four or more tries in a match, and no free
-        feed publishes try counts for this competition, so this column runs a few points below
-        SuperSport's, more for a side that scored a lot of tries. Everything to the left of it is
-        exact, and the table is ranked on match points from wins and draws, then points
-        difference, never on this column.
-      </div>
+      {allExact ? (
+        <div className="notice">
+          Every column here, including points, is exact: won, drawn and lost, points for and
+          against, and the real total log points for the season &mdash; four for a win, two for a
+          draw, and every bonus point including the try bonus &mdash; read off the published 2026
+          final standings rather than computed, since no free feed carries the per-match try
+          counts that bonus needs.
+        </div>
+      ) : (
+        <div className="notice">
+          <strong>* Points leave out the try bonus.</strong> Four for a win, two for a draw, one
+          for losing by seven or less &mdash; all exact, read straight off the score. The real
+          Currie Cup also awards one point for scoring four or more tries in a match, and no free
+          feed publishes try counts for this competition, so this column runs a few points below
+          the real total, more for a side that scored a lot of tries. Everything to the left of it
+          is exact, and the table is ranked on match points from wins and draws, then points
+          difference, never on this column.
+        </div>
+      )}
     </>
   );
 }

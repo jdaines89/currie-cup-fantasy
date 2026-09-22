@@ -96,6 +96,23 @@ CREATE TABLE IF NOT EXISTS squad_picks (
   PRIMARY KEY (entry_id, round, player_id)
 );
 
+-- The real total bonus points a union earned over a completed season --
+-- everything past plain win/draw points, including the try bonus, which no
+-- free feed carries per match. Populated only for a season that has
+-- actually finished and been checked against a published table (see
+-- data/seed/currie-cup-2026.json), never computed from match data. A season
+-- without a row here just doesn't get one, and the log's points column
+-- falls back to the exact win/draw/losing-bonus figure -- see
+-- src/lib/standings.ts.
+CREATE TABLE IF NOT EXISTS season_bonus_points (
+  season       TEXT NOT NULL,
+  team_id      TEXT NOT NULL REFERENCES teams(id),
+  bonus_points INTEGER NOT NULL,
+  source       TEXT NOT NULL,
+  as_of        TEXT NOT NULL,
+  PRIMARY KEY (season, team_id)
+);
+
 -- Computed by `npm run score`. Never hand-edited.
 CREATE TABLE IF NOT EXISTS round_scores (
   entry_id   INTEGER NOT NULL REFERENCES entries(id) ON DELETE CASCADE,

@@ -406,5 +406,20 @@
       "venue": "Boland Stadium",
       "status": "FT"
     }
-  ]
+  ],
+  "published_final_bonus_points": {
+    "note": "Total bonus points each union earned over the finished 7-round regular season -- everything past plain win/draw points, including the try bonus (one point for four or more tries in a match), which no free feed publishes per match for this competition. Read from the final standings table at https://en.wikipedia.org/wiki/2026_Currie_Cup_Premier_Division on 2026-09-22, after the season had already finished (30 August 2026), and spot-checked against supersport.com/rugby/tour/currie-cup/tables (one clean row, Bulls XV, matched exactly: P7 W0 D0 L7 diff-134 bonus-points 6). A season-level fact about a finished competition, not something computed from the match data above -- see src/lib/standings.ts.",
+    "source": "https://en.wikipedia.org/wiki/2026_Currie_Cup_Premier_Division",
+    "as_of": "2026-09-22",
+    "points": {
+      "142070": 7,
+      "142067": 7,
+      "142072": 6,
+      "142068": 6,
+      "142073": 4,
+      "142063": 4,
+      "142075": 4,
+      "142062": 6
+    }
+  }
 }
