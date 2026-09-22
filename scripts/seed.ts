@@ -19,6 +19,13 @@ interface SeedFile {
     home_score: number | null; away_score: number | null;
     venue: string | null; status: string;
   }[];
+  /** The real total bonus points per union for a season that has already
+   * finished, read off a published table rather than computed -- see
+   * `season_bonus_points` in the schema and `standings.ts`. Absent for a
+   * season still in progress. */
+  published_final_bonus_points?: {
+    source: string; as_of: string; points: Record<string, number>;
+  };
 }
 
 interface RosterFile {
@@ -50,6 +57,20 @@ db.transaction(() => {
   for (const t of seed.teams) upsertTeam.run(t);
   for (const m of seed.matches) upsertMatch.run(m);
 })();
+
+if (seed.published_final_bonus_points) {
+  const { source, as_of, points } = seed.published_final_bonus_points;
+  const upsertBonus = db.prepare(`
+    INSERT INTO season_bonus_points (season, team_id, bonus_points, source, as_of)
+    VALUES (@season, @team_id, @bonus_points, @source, @as_of)
+    ON CONFLICT(season, team_id) DO UPDATE SET
+      bonus_points = excluded.bonus_points, source = excluded.source, as_of = excluded.as_of`);
+  db.transaction(() => {
+    for (const [team_id, bonus_points] of Object.entries(points)) {
+      upsertBonus.run({ season: seed.season, team_id, bonus_points, source, as_of });
+    }
+  })();
+}
 
 // Prices depend on the log, so rosters go in after the results.
 const strengths = teamStrengths(new Map(buildStandings(seed.season).map((r) => [r.team_id, r.diff])));

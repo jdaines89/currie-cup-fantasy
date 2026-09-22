@@ -138,11 +138,34 @@ describe("the log", () => {
       "142062", // Bulls XV
     ]);
 
-    // The points column: exact win/draw/losing-bonus math, checked against
-    // the real 2026 table's own numbers minus each side's try bonus (which
-    // needs try counts this column doesn't have).
+    // Without a published bonus table (a season still in progress), the
+    // points column falls back to exact win/draw/losing-bonus math -- below
+    // the real total by whatever the try bonus would have added.
+    expect(byId.get("142070")!.points_exact).toBe(false);
     expect(byId.get("142070")!.estimated_points).toBe(25); // Griquas: 24 + a 2-point loss
     expect(byId.get("142062")!.estimated_points).toBe(1);  // Bulls XV: one narrow loss, nothing else
+
+    // With the season's real bonus-point totals supplied (read off the
+    // published 2026 table, data/seed/currie-cup-2026.json), the points
+    // column is exact throughout and matches that table exactly.
+    const publishedBonus: Record<string, number> = {
+      "142070": 7, "142067": 7, "142072": 6, "142068": 6,
+      "142073": 4, "142063": 4, "142075": 4, "142062": 6,
+    };
+    const exactLog = buildLog(ids, results, publishedBonus);
+    const exactById = new Map(exactLog.map((r) => [r.team_id, r]));
+    const publishedPoints: Record<string, number> = {
+      "142070": 31, "142067": 27, "142072": 22, "142068": 20,
+      "142073": 18, "142063": 16, "142075": 16, "142062": 6,
+    };
+    for (const [id, pts] of Object.entries(publishedPoints)) {
+      expect(exactById.get(id)!.estimated_points, `union ${id}`).toBe(pts);
+      expect(exactById.get(id)!.points_exact, `union ${id}`).toBe(true);
+    }
+    expect(exactLog.map((r) => r.team_id)).toEqual([
+      "142070", "142067", "142072", "142068",
+      "142073", "142063", "142075", "142062",
+    ]);
   });
 });
 

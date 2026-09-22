@@ -69,6 +69,13 @@ export function buildStandings(season = SEASON): LogRow[] {
   const played = listMatches(season).filter(
     (m) => m.home_score !== null && m.away_score !== null,
   );
+  const bonusRows = getDb().prepare(
+    `SELECT team_id, bonus_points FROM season_bonus_points WHERE season = ?`,
+  ).all(season) as { team_id: string; bonus_points: number }[];
+  const publishedBonus = bonusRows.length
+    ? Object.fromEntries(bonusRows.map((r) => [r.team_id, r.bonus_points]))
+    : undefined;
+
   return buildLog(
     listTeams().map((t) => t.id),
     played.map((m) => ({
@@ -77,6 +84,7 @@ export function buildStandings(season = SEASON): LogRow[] {
       home_score: m.home_score as number,
       away_score: m.away_score as number,
     })),
+    publishedBonus,
   );
 }
 

@@ -245,17 +245,11 @@
       </div>
       <div class="tablebox">
         <table id="log">
-          <thead><tr><th></th><th class="name">Union</th><th>P</th><th>W</th><th>D</th><th>L</th><th class="opt">PF</th><th class="opt">PA</th><th>+/&minus;</th><th>Pts*</th></tr></thead>
+          <thead><tr><th></th><th class="name">Union</th><th>P</th><th>W</th><th>D</th><th>L</th><th class="opt">PF</th><th class="opt">PA</th><th>+/&minus;</th><th id="log-pts-th">Pts</th></tr></thead>
           <tbody></tbody>
         </table>
       </div>
-      <p style="font-size:12px;color:var(--muted);margin:7px 2px 0">
-        * Win/draw/losing-bonus points, exact. It leaves out the try bonus &mdash; the real Currie
-        Cup awards one more for scoring four or more tries in a match, and no free feed publishes
-        try counts here &mdash; so it runs a few points below SuperSport's for a high-scoring side.
-        The table is ranked on match points from wins and draws, then points difference, never on
-        this column.
-      </p>
+      <p style="font-size:12px;color:var(--muted);margin:7px 2px 0" id="log-note"></p>
     </section>
 
     <section id="rules-sec"></section>
@@ -324,17 +318,21 @@
   }
 
   /* ---------- the log: ported from src/lib/standings.ts ---------- */
-  // Try bonus dropped 2026-09-22: no free feed carries try counts (checked
-  // live against TheSportsDB's own event lookup), so the old "scored 30+"
-  // guess was just wrong, undercounting every team. This column is now
-  // exact except for that one missing addend. Ranking now uses match points
-  // from wins and draws, not win count alone -- checked against the real
-  // 2026 table, that order matches top to bottom with no bonus points
-  // needed at all.
+  // The real total bonus points per union for the whole finished 2026
+  // season -- everything past plain win/draw points, including the try
+  // bonus, which no free feed carries per match (checked live against
+  // TheSportsDB's own event lookup: it returns nothing past the final
+  // score). Read off the published final standings at
+  // en.wikipedia.org/wiki/2026_Currie_Cup_Premier_Division on 2026-09-22,
+  // after the season had finished, and spot-checked against SuperSport's
+  // own table. A season-level fact about a finished competition, not
+  // computed from the match data above -- see src/lib/standings.ts for the
+  // full account, including the two bugs this replaced.
+  var PUBLISHED_BONUS = {"142070":7,"142067":7,"142072":6,"142068":6,"142073":4,"142063":4,"142075":4,"142062":6};
   var LOG_RULES = {win:4,draw:2,losingBonusMargin:7,losingBonus:1};
   function buildLog(){
     var rows = {}, k;
-    for(k=0;k<DATA.teams.length;k++) rows[DATA.teams[k].id] = {id:DATA.teams[k].id,p:0,w:0,d:0,l:0,pf:0,pa:0,diff:0,est:0};
+    for(k=0;k<DATA.teams.length;k++) rows[DATA.teams[k].id] = {id:DATA.teams[k].id,p:0,w:0,d:0,l:0,pf:0,pa:0,diff:0,est:0,exact:false};
     DATA.matches.forEach(function(m){
       [["h","hs","as"],["a","as","hs"]].forEach(function(s){
         var row = rows[m[s[0]]];
@@ -347,9 +345,20 @@
       });
     });
     var out = [];
-    for(k in rows){ rows[k].diff = rows[k].pf - rows[k].pa; out.push(rows[k]); }
+    for(k in rows){
+      var row = rows[k];
+      row.diff = row.pf - row.pa;
+      if(PUBLISHED_BONUS[k] !== undefined){
+        row.est = row.w * LOG_RULES.win + row.d * LOG_RULES.draw + PUBLISHED_BONUS[k];
+        row.exact = true;
+      }
+      out.push(row);
+    }
+    var allExact = out.every(function(r){ return r.exact; });
     out.sort(function(a,b){
-      return (b.w * LOG_RULES.win + b.d * LOG_RULES.draw) - (a.w * LOG_RULES.win + a.d * LOG_RULES.draw) ||
+      return (allExact
+        ? b.est - a.est
+        : (b.w * LOG_RULES.win + b.d * LOG_RULES.draw) - (a.w * LOG_RULES.win + a.d * LOG_RULES.draw)) ||
         b.diff - a.diff || b.pf - a.pf;
     });
     return out;
@@ -679,15 +688,22 @@
   }
 
   function renderLog(){
+    var log = buildLog();
+    var allExact = log.every(function(r){ return r.exact; });
     var body = document.querySelector("#log tbody"), html = "";
-    buildLog().forEach(function(row, idx){
+    log.forEach(function(row, idx){
       html += '<tr><td class="rank">' + (idx + 1) + '</td><td class="name">' + esc(T[row.id].n) +
               '</td><td class="n">' + row.p + '</td><td class="n">' + row.w +
               '</td><td class="n">' + row.d + '</td><td class="n">' + row.l +
               '</td><td class="n opt">' + row.pf + '</td><td class="n opt">' + row.pa +
-              '</td><td class="n">' + sgn(row.diff) + '</td><td class="n">' + row.est + "</td></tr>";
+              '</td><td class="n">' + sgn(row.diff) + '</td><td class="n">' + row.est +
+              (row.exact ? "" : "*") + "</td></tr>";
     });
     body.innerHTML = html;
+    document.getElementById("log-pts-th").textContent = allExact ? "Pts" : "Pts*";
+    document.getElementById("log-note").textContent = allExact
+      ? "Every column here, including points, is exact: the real total log points for the season — four for a win, two for a draw, and every bonus point including the try bonus — read off the published 2026 final standings rather than computed, since no free feed carries the per-match try counts that bonus needs."
+      : "* Win/draw/losing-bonus points, exact as far as it goes. It leaves out the try bonus — the real Currie Cup awards one more for scoring four or more tries in a match, and no free feed publishes try counts here — so it runs a few points below the real total for a high-scoring side. The table is ranked on match points from wins and draws, then points difference, never on this column.";
   }
 
   function renderAll(){ renderTabs(); renderRounds(); renderPlayers(); renderRound(); renderLeaderboard(); }

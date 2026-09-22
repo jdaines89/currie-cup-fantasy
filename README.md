@@ -114,21 +114,33 @@ on; they move when you re-seed after an ingest.
 
 ## The log
 
-Won, drawn, lost, and points for/against/difference are all exact. The points
-column is win/draw/losing-bonus math, also exact, but it leaves out the try
-bonus: the real Currie Cup awards one more point for scoring four or more
-tries in a match, and no free feed publishes try counts here (checked
-directly against TheSportsDB's own event lookup, which returns nothing past
-the final score). So this column runs a few points below the real total for
-a side that scored a lot of tries, and the table is ranked on match points
-from wins and draws, then points difference, never on it. Checked against
-the published 2026 table: with that ranking, the order matches top to bottom.
+Won, drawn, lost, points for/against/difference, and now the points column
+too are all exact for the 2026 season. The real Currie Cup awards a bonus
+point for scoring four or more tries in a match, on top of 4 for a win and 2
+for a draw, and no free feed publishes try counts here to compute that from
+(checked directly against TheSportsDB's own event lookup, which returns
+nothing past the final score). Rather than guess at it, `season_bonus_points`
+in the schema carries the real total bonus points per union for the whole
+finished season, read off the published final standings at
+[Wikipedia's 2026 Currie Cup Premier Division page](https://en.wikipedia.org/wiki/2026_Currie_Cup_Premier_Division)
+on 2026-09-22 and spot-checked against SuperSport's own table (see
+`data/seed/currie-cup-2026.json`'s `published_final_bonus_points`). It is a
+season-level fact about a finished competition, not something derived from
+the match results above.
 
-An earlier version of this guessed at the try bonus from total points
-scored and, separately, ranked on win count alone. Both were wrong: the
-guess undercounted every team by one to four points, and ignoring draws in
-the ranking put at least one side above a team that actually finished ahead
-of it. Fixed 2026-09-22 after a discrepancy against SuperSport's table.
+This only works for a season that has already finished and been checked
+against a published table. A season still in progress has no row here, and
+`buildLog` falls back to exact win/draw/losing-bonus math -- which leaves out
+the try bonus and so runs a few points below the real total -- ranked on
+match points from wins and draws rather than the partial points column. The
+UI marks the difference: the points column drops its asterisk once every row
+has the real total.
+
+Two bugs preceded this, both fixed 2026-09-22 after a discrepancy against
+SuperSport's table: the points column had guessed at the try bonus from
+total points scored, undercounting every team by one to four points, and the
+ranking had sorted on win count alone, ignoring draws, which put at least one
+side above a team that actually finished ahead of it.
 
 ## Layout
 
