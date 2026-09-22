@@ -10,12 +10,18 @@ export interface LogRow {
   points_against: number;
   diff: number;
   /**
-   * Competition points, 4/2/0 plus a bonus point for losing by seven or less
-   * and one for scoring thirty or more.
+   * Competition points: 4 for a win, 2 for a draw, plus the losing bonus
+   * point for losing by seven or less. Every part of this is exact, read
+   * straight off the final score.
    *
-   * The real Currie Cup awards its attacking bonus on try count, and no free
-   * feed publishes try counts for this competition, so this column is an
-   * estimate. Won/drawn/lost and the points columns are exact.
+   * It leaves out the try bonus -- one point for scoring four or more tries
+   * in a match -- because no free feed publishes try counts for this
+   * competition (confirmed against TheSportsDB's own event lookup, which
+   * returns nothing beyond the final score). So this column runs a few
+   * points below the real Currie Cup total, more for a side that scored a
+   * lot of tries. An earlier version of this file guessed at that bonus from
+   * total points scored; that guess was wrong more often than not and is
+   * gone. Won/drawn/lost and the points columns to its left are exact.
    */
   estimated_points: number;
 }
@@ -25,8 +31,6 @@ export const LOG_RULES = {
   draw: 2,
   losingBonusMargin: 7,
   losingBonus: 1,
-  attackingBonusThreshold: 30,
-  attackingBonus: 1,
 } as const;
 
 export function buildLog(teamIds: string[], matches: MatchResult[]): LogRow[] {
@@ -57,15 +61,20 @@ export function buildLog(teamIds: string[], matches: MatchResult[]): LogRow[] {
         row.lost += 1;
         if (-margin <= LOG_RULES.losingBonusMargin) row.estimated_points += LOG_RULES.losingBonus;
       }
-
-      if (scored >= LOG_RULES.attackingBonusThreshold) row.estimated_points += LOG_RULES.attackingBonus;
     }
   }
 
   for (const row of rows.values()) row.diff = row.points_for - row.points_against;
 
-  // Rank on what the feed gives exactly: wins, then points difference, then
-  // points scored. The estimated column is shown but never used to sort.
+  // Rank on match points from wins and draws -- 4 and 2, exact, no bonus
+  // guesswork -- then points difference, then points scored. A draw has to
+  // be weighed against wins here: sorting on win count alone (as this used
+  // to) ranks a plain three-win side above a three-win-one-draw side even
+  // though the draw earns it more log points, which is wrong. Checked
+  // against the published 2026 table: this order matches it exactly, top to
+  // bottom, with no bonus points needed at all.
   return [...rows.values()].sort((a, b) =>
-    b.won - a.won || b.diff - a.diff || b.points_for - a.points_for);
+    (b.won * LOG_RULES.win + b.drawn * LOG_RULES.draw) -
+      (a.won * LOG_RULES.win + a.drawn * LOG_RULES.draw) ||
+    b.diff - a.diff || b.points_for - a.points_for);
 }
