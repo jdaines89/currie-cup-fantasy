@@ -1,0 +1,489 @@
+{
+  "note": "Squads that could be read from a free public source. No free sports API carries Currie Cup rosters, so these came from the unions' own sites and Wikipedia. The other five unions block automated reads; run `npm run import:roster` to add them from a CSV, or use the /admin screen.",
+  "rosters": [
+    {
+      "team_id": "142067",
+      "team": "Free State Cheetahs",
+      "source": "fscheetahs.co.za/players",
+      "as_of": "2026-09-22",
+      "players": [
+        {
+          "name": "Aidon Davis",
+          "position": "Loose forward/Lock"
+        },
+        {
+          "name": "Arno van der Merwe",
+          "position": "Lock"
+        },
+        {
+          "name": "Ben Pitout",
+          "position": "Tighthead Prop"
+        },
+        {
+          "name": "Carel-Jan Coetzee",
+          "position": "Centre"
+        },
+        {
+          "name": "Carl Wegner",
+          "position": "Lock"
+        },
+        {
+          "name": "Clayton Blommetjies",
+          "position": "Flyhalf/Fullback"
+        },
+        {
+          "name": "Cohen Jasper",
+          "position": "Fullback"
+        },
+        {
+          "name": "Daniel Maartens",
+          "position": "Openside Flank"
+        },
+        {
+          "name": "David Erwee",
+          "position": "Flyhalf"
+        },
+        {
+          "name": "Erich Visser",
+          "position": "Scrumhalf"
+        },
+        {
+          "name": "Ethan Wentzel",
+          "position": "Flyhalf"
+        },
+        {
+          "name": "Frankie Dos Reis",
+          "position": "Tighthead Prop"
+        },
+        {
+          "name": "Jandre Nel",
+          "position": "Scrumhalf"
+        },
+        {
+          "name": "Jaundre Schoeman",
+          "position": "Hooker"
+        },
+        {
+          "name": "John-Kelly Okonkwo",
+          "position": "Tighthead Prop"
+        },
+        {
+          "name": "Jooste Nel",
+          "position": "Centre"
+        },
+        {
+          "name": "Juan Smal",
+          "position": "Hooker"
+        },
+        {
+          "name": "Juan Venter",
+          "position": "Lock/Flank"
+        },
+        {
+          "name": "Litha Nkula",
+          "position": "Wing"
+        },
+        {
+          "name": "Louis van der Westhuizen",
+          "position": "Hooker"
+        },
+        {
+          "name": "Marco Jansen van Vuren",
+          "position": "Scrumhalf"
+        },
+        {
+          "name": "Matome Manyama",
+          "position": "Loosehead Prop"
+        },
+        {
+          "name": "Michael Annies",
+          "position": "Fullback"
+        },
+        {
+          "name": "Mihlali Mosi",
+          "position": "Flank"
+        },
+        {
+          "name": "Ntokozo Makhaza",
+          "position": "Wing"
+        },
+        {
+          "name": "Shaun Ray",
+          "position": "Fullback"
+        },
+        {
+          "name": "Sisonke Vumazonke",
+          "position": "Loose forward"
+        },
+        {
+          "name": "Siya Ningiza",
+          "position": "Loose forward"
+        },
+        {
+          "name": "Siyemukela Ndlovu",
+          "position": "Flank"
+        },
+        {
+          "name": "Stefan Venter",
+          "position": "Hooker"
+        },
+        {
+          "name": "Tebogo Nkosi",
+          "position": "Prop"
+        },
+        {
+          "name": "Tiaan Swanepoel",
+          "position": "Flyhalf"
+        },
+        {
+          "name": "Tielman Nieuwoudt",
+          "position": "Prop"
+        },
+        {
+          "name": "Victor Sekekete",
+          "position": "Lock"
+        },
+        {
+          "name": "Zander du Plessis",
+          "position": "Inside Centre"
+        }
+      ]
+    },
+    {
+      "team_id": "142070",
+      "team": "Griquas",
+      "source": "griquasrugby.co.za/players",
+      "as_of": "2026-09-22",
+      "players": [
+        {
+          "name": "Corne Lavagna",
+          "position": "Loosehead Prop"
+        },
+        {
+          "name": "Leon Lyons",
+          "position": "Loosehead Prop"
+        },
+        {
+          "name": "Ebune Ngundue",
+          "position": "Loosehead Prop"
+        },
+        {
+          "name": "Keagan Blanckenberg",
+          "position": "Hooker"
+        },
+        {
+          "name": "Tiaan Lange",
+          "position": "Hooker"
+        },
+        {
+          "name": "Janco Uys",
+          "position": "Hooker"
+        },
+        {
+          "name": "Johan Louw",
+          "position": "Tighthead Prop"
+        },
+        {
+          "name": "IG Prinsloo",
+          "position": "Tighthead Prop"
+        },
+        {
+          "name": "Ntobeko Shezi",
+          "position": "Tighthead Prop"
+        },
+        {
+          "name": "Lungisile Mbiko",
+          "position": "Lock"
+        },
+        {
+          "name": "Malembe Mpofu",
+          "position": "Lock"
+        },
+        {
+          "name": "Derik Pretorius",
+          "position": "Lock"
+        },
+        {
+          "name": "Albert Liebenberg",
+          "position": "Lock"
+        },
+        {
+          "name": "Lourens Oosthuizen",
+          "position": "Flank"
+        },
+        {
+          "name": "Marco de Wit",
+          "position": "Flank"
+        },
+        {
+          "name": "Phumzile Maqondwana",
+          "position": "Flank"
+        },
+        {
+          "name": "Carel van der Merwe",
+          "position": "Flank"
+        },
+        {
+          "name": "Carel Els",
+          "position": "Number 8"
+        },
+        {
+          "name": "Gustav Erlank",
+          "position": "Number 8"
+        },
+        {
+          "name": "Caleb Abrahams",
+          "position": "Scrumhalf"
+        },
+        {
+          "name": "Bobby Alexander",
+          "position": "Scrumhalf"
+        },
+        {
+          "name": "Jack Hart",
+          "position": "Scrumhalf"
+        },
+        {
+          "name": "Liam Koen",
+          "position": "Flyhalf"
+        },
+        {
+          "name": "Zinedine Robinson",
+          "position": "Flyhalf"
+        },
+        {
+          "name": "George Whitehead",
+          "position": "Flyhalf"
+        },
+        {
+          "name": "Damian Markus",
+          "position": "Inside Centre"
+        },
+        {
+          "name": "Mnombo Zwelendaba",
+          "position": "Inside Centre"
+        },
+        {
+          "name": "Zane Bester",
+          "position": "Outside Centre"
+        },
+        {
+          "name": "Tom Nel",
+          "position": "Outside Centre"
+        },
+        {
+          "name": "Dylan Maart",
+          "position": "Wing"
+        },
+        {
+          "name": "Sako Makata",
+          "position": "Wing"
+        },
+        {
+          "name": "Gurshwin Wehr",
+          "position": "Wing"
+        },
+        {
+          "name": "Cameron Hufke",
+          "position": "Fullback"
+        },
+        {
+          "name": "Connor Mahoney",
+          "position": "Fullback"
+        }
+      ]
+    },
+    {
+      "team_id": "142063",
+      "team": "Boland Cavaliers",
+      "source": "en.wikipedia.org/wiki/Boland_Cavaliers",
+      "as_of": "2026-09-22",
+      "players": [
+        {
+          "name": "Andrew Beerwinkel",
+          "position": "Prop"
+        },
+        {
+          "name": "Doctor Booysen",
+          "position": "Prop"
+        },
+        {
+          "name": "Mthokozisi Gumede",
+          "position": "Prop"
+        },
+        {
+          "name": "Wayrin Losper",
+          "position": "Prop"
+        },
+        {
+          "name": "Lamla Nunu",
+          "position": "Prop"
+        },
+        {
+          "name": "Dayan van der Westhuizen",
+          "position": "Prop"
+        },
+        {
+          "name": "Laurence Victor",
+          "position": "Prop"
+        },
+        {
+          "name": "Emile Booysen",
+          "position": "Hooker"
+        },
+        {
+          "name": "Llewellyn Classen",
+          "position": "Hooker"
+        },
+        {
+          "name": "Sidney Tobias",
+          "position": "Hooker"
+        },
+        {
+          "name": "HP van Schoor",
+          "position": "Hooker"
+        },
+        {
+          "name": "Michael Benadie",
+          "position": "Lock"
+        },
+        {
+          "name": "Ameer Hendricks",
+          "position": "Lock"
+        },
+        {
+          "name": "Schalk Oelofse",
+          "position": "Lock"
+        },
+        {
+          "name": "Marlyn Williams",
+          "position": "Lock"
+        },
+        {
+          "name": "Sauleigh Arendse",
+          "position": "Loose forward"
+        },
+        {
+          "name": "Taine-Randall Booysen",
+          "position": "Loose forward"
+        },
+        {
+          "name": "Gift Dlamini",
+          "position": "Loose forward"
+        },
+        {
+          "name": "Keenan Opperman",
+          "position": "Loose forward"
+        },
+        {
+          "name": "Khwezi Mafu",
+          "position": "Loose forward"
+        },
+        {
+          "name": "Thurlow Marsh",
+          "position": "Loose forward"
+        },
+        {
+          "name": "Sibusiso Sangweni",
+          "position": "Loose forward"
+        },
+        {
+          "name": "Jurie van Vuuren",
+          "position": "Loose forward"
+        },
+        {
+          "name": "Ludio Williams",
+          "position": "Loose forward"
+        },
+        {
+          "name": "Bentley Geldenhuys",
+          "position": "Scrumhalf"
+        },
+        {
+          "name": "Aphelele Madaka",
+          "position": "Scrumhalf"
+        },
+        {
+          "name": "Godlen Masimla",
+          "position": "Scrumhalf"
+        },
+        {
+          "name": "Louis Schreuder",
+          "position": "Scrumhalf"
+        },
+        {
+          "name": "Chriswill September",
+          "position": "Scrumhalf"
+        },
+        {
+          "name": "Ashlon Davids",
+          "position": "Flyhalf"
+        },
+        {
+          "name": "Darian Hock",
+          "position": "Flyhalf"
+        },
+        {
+          "name": "Juan Mostert",
+          "position": "Flyhalf"
+        },
+        {
+          "name": "James Tedder",
+          "position": "Flyhalf"
+        },
+        {
+          "name": "David Brits",
+          "position": "Centre"
+        },
+        {
+          "name": "Erik Lambrecht",
+          "position": "Centre"
+        },
+        {
+          "name": "Jurick Lewis",
+          "position": "Centre"
+        },
+        {
+          "name": "Xavier Mitchell",
+          "position": "Centre"
+        },
+        {
+          "name": "Lunathi Nxele",
+          "position": "Centre"
+        },
+        {
+          "name": "Donovan Don",
+          "position": "Wing"
+        },
+        {
+          "name": "Cornell Engelbrecht",
+          "position": "Wing"
+        },
+        {
+          "name": "Riaan Louw",
+          "position": "Wing"
+        },
+        {
+          "name": "Marcqiewn Titus",
+          "position": "Wing"
+        },
+        {
+          "name": "Renaldo Young",
+          "position": "Wing"
+        },
+        {
+          "name": "Jayden Bantom",
+          "position": "Fullback"
+        },
+        {
+          "name": "Duren Hoffman",
+          "position": "Fullback"
+        },
+        {
+          "name": "Domenic Smit",
+          "position": "Fullback"
+        }
+      ]
+    }
+  ]
+}
