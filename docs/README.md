@@ -34,5 +34,16 @@ The player game. No free source carries Currie Cup player-level match stats and
 only three of the eight unions have real rosters, so including it here would have
 meant inventing players.
 
-Picks live in the viewer's `localStorage`, so the leaderboard is per-device and
-the demo is pass-the-phone: add a name for each person at the top.
+## Where the picks live
+
+In `localStorage` under the key `ccp2026`, which is the browser's own storage for
+this page's origin. That is why picks are still there after closing the tab: it
+persists until the viewer clears their site data, and it survives a republish.
+It never leaves the device, so it reaches no server and no other player, and the
+leaderboard is per-device: the demo is pass-the-phone, a name per person.
+
+Every read and write is wrapped in `try`/`catch`, because the accessor throws in
+a private window or with site data blocked, and the page has to render anyway.
+
+The footer carries a two-tap **Wipe everything on this device** button, which
+removes that key and starts over, for running the demo a second time.

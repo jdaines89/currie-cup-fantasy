@@ -175,6 +175,12 @@
   .rules td:first-child{color:var(--ink-2);white-space:normal}
   .rules td:last-child{font-family:"IBM Plex Mono",monospace;font-weight:600;width:64px}
 
+  .reset{
+    appearance:none;font:inherit;font-size:13px;margin-top:4px;
+    padding:9px 14px;border-radius:9px;border:1px solid var(--line-2);
+    background:transparent;color:var(--muted);cursor:pointer;
+  }
+  .reset.armed{border-color:var(--loss);color:var(--loss);font-weight:600}
   footer{margin:24px 0 8px;font-size:12.5px;color:var(--muted);line-height:1.6}
   footer p{margin:0 0 9px}
   footer b{color:var(--ink-2);font-weight:600}
@@ -259,8 +265,11 @@
       <p><b>No player game here.</b> No free source carries Currie Cup player-level match stats,
       and squads could only be read for three of the eight unions, so rather than invent players
       this sticks to games that score themselves off real results.</p>
-      <p><b>Everything is on this phone.</b> Picks are saved in this browser only, so each person
-      needs their own name on the list above &mdash; nothing is sent anywhere.</p>
+      <p><b>Everything is on this phone.</b> Your picks are written to this browser's own storage
+      for this page, which is why they are still here when you close it and come back. They never
+      leave the device, so they don't reach me, the other people playing, or any server, and each
+      person needs their own name on the list above rather than their own phone.</p>
+      <p><button class="reset" type="button" data-reset="1" id="resetbtn">Wipe everything on this device</button></p>
     </footer>
   </main>
 </div>
@@ -716,7 +725,7 @@
   });
 
   document.addEventListener("click", function(ev){
-    var t = ev.target.closest ? ev.target.closest("[data-mode],[data-round],[data-entry],[data-add],[data-save],[data-captain],[data-pick],[data-act]") : null;
+    var t = ev.target.closest ? ev.target.closest("[data-mode],[data-round],[data-entry],[data-add],[data-save],[data-captain],[data-pick],[data-act],[data-reset]") : null;
     if(!t) return;
 
     if(t.hasAttribute("data-mode")){
@@ -728,6 +737,8 @@
     }else if(t.hasAttribute("data-entry")){
       state.current = t.getAttribute("data-entry"); adding = false;
       save(); renderAll();
+    }else if(t.hasAttribute("data-reset")){
+      doReset(t);
     }else if(t.hasAttribute("data-add")){
       adding = !adding; renderPlayers();
     }else if(t.hasAttribute("data-save")){
@@ -754,6 +765,28 @@
       }
     }
   });
+
+  var resetArmed = 0;
+  function doReset(btn){
+    if(!resetArmed){
+      resetArmed = 1;
+      btn.classList.add("armed");
+      btn.textContent = "Tap again to wipe every player";
+      setTimeout(function(){
+        if(!resetArmed) return;
+        resetArmed = 0;
+        btn.classList.remove("armed");
+        btn.textContent = "Wipe everything on this device";
+      }, 4000);
+      return;
+    }
+    resetArmed = 0;
+    try{ localStorage.removeItem(KEY); }catch(e){}
+    state = {entries:[{id:"e1",name:"Me",picks:{},preds:{}}],current:"e1",round:ROUNDS[0],mode:state.mode};
+    adding = false;
+    save(); renderAll();
+    window.scrollTo({top:0, behavior:"smooth"});
+  }
 
   document.addEventListener("keydown", function(ev){
     if(ev.key !== " " && ev.key !== "Enter") return;
