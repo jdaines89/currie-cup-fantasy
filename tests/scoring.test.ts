@@ -121,8 +121,28 @@ describe("the log", () => {
       expect(row.played).toBe(7);
     }
 
-    expect(log[0].team_id).toBe("142070"); // Griquas top
-    expect(log.at(-1)!.team_id).toBe("142062"); // Bulls XV bottom
+    // The full published 2026 final order, top to bottom -- not just the
+    // ends. Sharks XV (three wins, a draw) has to outrank Boland Cavaliers
+    // (three wins, no draw) despite a worse points difference, because the
+    // draw is worth more log points than the difference is worth as a
+    // tiebreaker. A sort keyed on win count alone, ignoring draws, gets that
+    // pair backwards.
+    expect(log.map((r) => r.team_id)).toEqual([
+      "142070", // Griquas
+      "142067", // Cheetahs
+      "142072", // Pumas
+      "142068", // Lions
+      "142073", // Sharks XV
+      "142063", // Boland Cavaliers
+      "142075", // Stormers XXIII
+      "142062", // Bulls XV
+    ]);
+
+    // The points column: exact win/draw/losing-bonus math, checked against
+    // the real 2026 table's own numbers minus each side's try bonus (which
+    // needs try counts this column doesn't have).
+    expect(byId.get("142070")!.estimated_points).toBe(25); // Griquas: 24 + a 2-point loss
+    expect(byId.get("142062")!.estimated_points).toBe(1);  // Bulls XV: one narrow loss, nothing else
   });
 });
 

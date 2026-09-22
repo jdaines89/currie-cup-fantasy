@@ -250,9 +250,11 @@
         </table>
       </div>
       <p style="font-size:12px;color:var(--muted);margin:7px 2px 0">
-        * Competition points are an estimate. The real Currie Cup awards its attacking bonus on
-        try count and no free feed publishes try counts here, so the table is ranked on wins and
-        points difference, never on that column.
+        * Win/draw/losing-bonus points, exact. It leaves out the try bonus &mdash; the real Currie
+        Cup awards one more for scoring four or more tries in a match, and no free feed publishes
+        try counts here &mdash; so it runs a few points below SuperSport's for a high-scoring side.
+        The table is ranked on match points from wins and draws, then points difference, never on
+        this column.
       </p>
     </section>
 
@@ -322,7 +324,14 @@
   }
 
   /* ---------- the log: ported from src/lib/standings.ts ---------- */
-  var LOG_RULES = {win:4,draw:2,losingBonusMargin:7,losingBonus:1,attackThreshold:30,attackBonus:1};
+  // Try bonus dropped 2026-09-22: no free feed carries try counts (checked
+  // live against TheSportsDB's own event lookup), so the old "scored 30+"
+  // guess was just wrong, undercounting every team. This column is now
+  // exact except for that one missing addend. Ranking now uses match points
+  // from wins and draws, not win count alone -- checked against the real
+  // 2026 table, that order matches top to bottom with no bonus points
+  // needed at all.
+  var LOG_RULES = {win:4,draw:2,losingBonusMargin:7,losingBonus:1};
   function buildLog(){
     var rows = {}, k;
     for(k=0;k<DATA.teams.length;k++) rows[DATA.teams[k].id] = {id:DATA.teams[k].id,p:0,w:0,d:0,l:0,pf:0,pa:0,diff:0,est:0};
@@ -335,12 +344,14 @@
         if(margin > 0){ row.w++; row.est += LOG_RULES.win; }
         else if(margin === 0){ row.d++; row.est += LOG_RULES.draw; }
         else { row.l++; if(-margin <= LOG_RULES.losingBonusMargin) row.est += LOG_RULES.losingBonus; }
-        if(scored >= LOG_RULES.attackThreshold) row.est += LOG_RULES.attackBonus;
       });
     });
     var out = [];
     for(k in rows){ rows[k].diff = rows[k].pf - rows[k].pa; out.push(rows[k]); }
-    out.sort(function(a,b){ return b.w - a.w || b.diff - a.diff || b.pf - a.pf; });
+    out.sort(function(a,b){
+      return (b.w * LOG_RULES.win + b.d * LOG_RULES.draw) - (a.w * LOG_RULES.win + a.d * LOG_RULES.draw) ||
+        b.diff - a.diff || b.pf - a.pf;
+    });
     return out;
   }
 

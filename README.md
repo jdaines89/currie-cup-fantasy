@@ -114,10 +114,21 @@ on; they move when you re-seed after an ingest.
 
 ## The log
 
-Won, drawn, lost and the points columns are exact. Competition points are an
-**estimate**: the real Currie Cup awards its attacking bonus on try count, and
-no free feed publishes try counts here. The table is ranked on wins and points
-difference, never on the estimate, and the UI says so.
+Won, drawn, lost, and points for/against/difference are all exact. The points
+column is win/draw/losing-bonus math, also exact, but it leaves out the try
+bonus: the real Currie Cup awards one more point for scoring four or more
+tries in a match, and no free feed publishes try counts here (checked
+directly against TheSportsDB's own event lookup, which returns nothing past
+the final score). So this column runs a few points below the real total for
+a side that scored a lot of tries, and the table is ranked on match points
+from wins and draws, then points difference, never on it. Checked against
+the published 2026 table: with that ranking, the order matches top to bottom.
+
+An earlier version of this guessed at the try bonus from total points
+scored and, separately, ranked on win count alone. Both were wrong: the
+guess undercounted every team by one to four points, and ignoring draws in
+the ranking put at least one side above a team that actually finished ahead
+of it. Fixed 2026-09-22 after a discrepancy against SuperSport's table.
 
 ## Layout
 

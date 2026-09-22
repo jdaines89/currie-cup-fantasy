@@ -43,11 +43,13 @@ export default function StandingsPage() {
       </div>
 
       <div className="notice">
-        <strong>* Points are an estimate.</strong> The real Currie Cup awards its attacking
-        bonus point on try count, and no free feed publishes try counts for this competition.
-        This column uses four for a win, two for a draw, one for losing by seven or less and
-        one for scoring thirty or more. Everything to the left of it is exact, and the table is
-        ranked on wins and points difference rather than the estimate.
+        <strong>* Points leave out the try bonus.</strong> Four for a win, two for a draw, one
+        for losing by seven or less &mdash; all exact, read straight off the score. The real
+        Currie Cup also awards one point for scoring four or more tries in a match, and no free
+        feed publishes try counts for this competition, so this column runs a few points below
+        SuperSport's, more for a side that scored a lot of tries. Everything to the left of it is
+        exact, and the table is ranked on match points from wins and draws, then points
+        difference, never on this column.
       </div>
     </>
   );
