@@ -111,6 +111,7 @@ exception when raise_exception then raise notice 'ok: a wrong code joins nothing
 end $$;
 select public.join_pool(lower(:'code'));
 select pg_temp.check((select count(*) from public.pool_leaderboard where team_name = 'Daines XV') = 1, 'Andy sees Justin on the pool leaderboard');
+select pg_temp.check((select count(*) from public.predictions) = 2, 'Andy sees Justin''s calls once his round is locked');
 delete from public.pool_picks;
 update public.predictions set home_score = 0;
 reset role;
@@ -214,5 +215,18 @@ update public.members set email_reminders = false where user_id = '00000000-0000
 select pg_temp.check((select count(*) from notify.due_reminders()) = 1, 'reminders can be turned off');
 insert into notify.reminders_sent (user_id, match_id) values ('00000000-0000-0000-0000-00000000000c', 't-soon');
 select pg_temp.check((select count(*) from notify.due_reminders()) = 0, 'nobody is reminded twice');
+
+-- Seeing calls: hidden before kickoff, shown to pool mates after it
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000b');
+select pg_temp.check((select count(*) from public.predictions where match_id = 't-soon') = 0, 'a pool mate''s call is hidden before kickoff');
+reset role;
+update public.matches set kickoff_at = now() - interval '1 minute' where id = 't-soon';
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000b');
+select pg_temp.check((select count(*) from public.predictions where match_id = 't-soon') = 1, 'a pool mate''s call shows after kickoff');
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000c');
+select pg_temp.check((select count(*) from public.predictions where match_id = '2498543') = 0, 'calls stay hidden from members outside the pool');
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000a');
+select pg_temp.check((select count(*) from public.predictions) = 3, 'you always see your own calls');
+reset role;
 
 \echo ALL CHECKS PASSED

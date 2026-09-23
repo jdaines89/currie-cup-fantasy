@@ -22,6 +22,8 @@ const PARTS = [
   { key: "exact_pts",  code: "EXA", max: "5", what: "Exact score" },
 ] as const;
 
+interface MateCall extends Prediction { name: string; pts: number | null }
+
 function Breakdown({ s }: { s: PredScore }) {
   return (
     <div className="breakdown">
@@ -39,13 +41,14 @@ export default function PredictPage() {
 }
 
 function Predict() {
-  const { entry, season, matches, rounds, teams, me } = useLeague();
+  const { entry, season, matches, rounds, teams, me, members } = useLeague();
   const [remind, setRemind] = useState(me.email_reminders);
   const { locked, isLocked, matchStarted, reload: reloadLocks } = useRoundLocks(entry!.id, season, matches);
   const [round, setRound] = useState<number | null>(null);
   const [preds, setPreds] = useState<Map<string, Prediction>>(new Map());
   const [draft, setDraft] = useState<Record<string, [string, string]>>({});
   const [scores, setScores] = useState<Map<string, PredScore>>(new Map());
+  const [mates, setMates] = useState<MateCall[]>([]);
   const [msg, setMsg] = useState<string | null>(null);
 
   useEffect(() => { if (round === null && rounds.length) setRound(firstOpenRound(rounds, isLocked)); }, [round, rounds, isLocked]);
@@ -54,15 +57,26 @@ function Predict() {
   const load = useCallback(async () => {
     if (round === null) return;
     const ids = matches.filter((m) => m.round === round).map((m) => m.id);
-    const [p, s] = await Promise.all([
+    const [p, s, theirs, theirScores, entries] = await Promise.all([
       supabase.from("predictions").select("*").eq("entry_id", entry!.id).in("match_id", ids),
       supabase.from("prediction_scores").select("match_id, total_pts, is_banker, result_pts, margin_pts, near_pts, exact_pts").eq("entry_id", entry!.id).in("match_id", ids),
+      // Only calls that are locked come back: the database hides the rest.
+      supabase.from("predictions").select("entry_id, match_id, home_score, away_score, is_banker").neq("entry_id", entry!.id).in("match_id", ids),
+      supabase.from("prediction_scores").select("entry_id, match_id, total_pts").neq("entry_id", entry!.id).in("match_id", ids),
+      supabase.from("entries").select("id, user_id, team_name").eq("season", season.id),
     ]);
+    const owner = new Map(((entries.data ?? []) as { id: number; user_id: string }[]).map((e) => [e.id, e.user_id]));
+    const pts = new Map(((theirScores.data ?? []) as { entry_id: number; match_id: string; total_pts: number }[])
+      .map((x) => [`${x.entry_id}:${x.match_id}`, x.total_pts]));
+    setMates(((theirs.data ?? []) as Prediction[]).map((x) => ({
+      ...x, name: members.find((m) => m.user_id === owner.get(x.entry_id))?.display_name ?? "A mate",
+      pts: pts.get(`${x.entry_id}:${x.match_id}`) ?? null,
+    })).sort((a, b) => a.name.localeCompare(b.name)));
     const map = new Map(((p.data ?? []) as Prediction[]).map((x) => [x.match_id, x]));
     setPreds(map);
     setDraft(Object.fromEntries([...map].map(([k, v]) => [k, [String(v.home_score), String(v.away_score)]])));
     setScores(new Map(((s.data ?? []) as PredScore[]).map((x) => [x.match_id, x])));
-  }, [entry, round, matches]);
+  }, [entry, round, matches, season.id, members]);
   useEffect(() => { load(); }, [load]);
 
   if (round === null) return null;
@@ -130,13 +144,13 @@ function Predict() {
                   : !shut && !bankerShut && p ? <button type="button" className="bank" onClick={() => back(m.id)}>Make Banker</button> : null}
               </div>
               <div className="pred">
-                <span className="pteam"><Crest team={h} /><strong>{h.display_name}</strong></span>
+                <span className="pteam"><span className="ha home">Home</span><Crest team={h} /><strong>{h.display_name}</strong></span>
                 <input className="pbox" inputMode="numeric" type="number" min={0} max={150} disabled={shut} value={d[0]}
                   aria-label={`${h.display_name} score`} onChange={(e) => save(m.id, e.target.value, d[1])} />
                 <span className="muted">–</span>
                 <input className="pbox" inputMode="numeric" type="number" min={0} max={150} disabled={shut} value={d[1]}
                   aria-label={`${a.display_name} score`} onChange={(e) => save(m.id, d[0], e.target.value)} />
-                <span className="pteam away"><Crest team={a} /><strong>{a.display_name}</strong></span>
+                <span className="pteam away"><span className="ha">Away</span><Crest team={a} /><strong>{a.display_name}</strong></span>
               </div>
               {shut && m.home_score !== null && (done || !season.is_replay) && (
                 <div className="presult">
@@ -146,6 +160,20 @@ function Predict() {
                   </div>
                   <span className="pts">{scores.has(m.id) ? `+${scores.get(m.id)!.total_pts}` : "no call"}</span>
                 </div>
+              )}
+              {mates.some((x) => x.match_id === m.id) && (
+                <details className="mates">
+                  <summary>Your mates&apos; calls ({mates.filter((x) => x.match_id === m.id).length})</summary>
+                  <ul>
+                    {mates.filter((x) => x.match_id === m.id).map((x) => (
+                      <li key={x.entry_id}>
+                        <span>{x.name}{x.is_banker && <span className="pchip bank2">×2</span>}</span>
+                        <strong>{x.home_score}–{x.away_score}</strong>
+                        <span className="pts">{x.pts !== null ? `+${x.pts}` : ""}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
               )}
             </div>
           );

@@ -106,8 +106,7 @@ function Chat() {
 
   return (
     <div className="card chat">
-      <h2>{pool!.name} chat</h2>
-      <p className="sub">Only people in this pool see it. Type @ to tag someone, and tap one of your messages to delete it.</p>
+      <h2>{pool!.name}</h2>
       <div className="chatlog">
         {msgs.length === 0 && <p className="muted small">No messages yet. Start the banter.</p>}
         {msgs.map((m, i) => {
@@ -153,7 +152,7 @@ function Chat() {
             ))}
           </ul>
         )}
-        <textarea ref={box} rows={1} maxLength={900} placeholder="Message the league" value={text}
+        <textarea ref={box} rows={1} maxLength={900} placeholder="Message · @ to tag" value={text}
           onChange={(e) => onType(e.target.value)} onKeyDown={onKey} />
         <button type="submit" disabled={!text.trim()}>Send</button>
       </form>
