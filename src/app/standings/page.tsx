@@ -14,7 +14,7 @@ export default function StandingsPage() {
     supabase.from("standings").select("*").eq("season", season.id).order("position")
       .then(({ data }) => setLog((data ?? []) as StandingRow[]));
   }, [season.id]);
-  const exact = log.length > 0 && log.every((r) => r.points_exact);
+  const pending = log.some((r) => !r.points_exact);
 
   return (
     <>
@@ -25,7 +25,7 @@ export default function StandingsPage() {
           <thead><tr>
             <th>#</th><th>Team</th><th className="num">P</th><th className="num">W</th><th className="num">D</th>
             <th className="num">L</th><th className="num hide-sm">PF</th><th className="num hide-sm">PA</th>
-            <th className="num">Diff</th><th className="num">Pts{exact ? "" : "*"}</th>
+            <th className="num">Diff</th><th className="num">BP</th><th className="num">Pts</th>
           </tr></thead>
           <tbody>
             {log.map((r) => (
@@ -34,7 +34,7 @@ export default function StandingsPage() {
                 <td><Team team={teams.get(r.team_id)} /></td>
                 <td className="num">{r.played}</td><td className="num">{r.won}</td><td className="num">{r.drawn}</td>
                 <td className="num">{r.lost}</td><td className="num hide-sm">{r.points_for}</td>
-                <td className="num hide-sm">{r.points_against}</td><td className="num">{signed(r.diff)}</td>
+                <td className="num hide-sm">{r.points_against}</td><td className="num">{signed(r.diff)}</td><td className="num">{r.bonus_points}{r.points_exact ? "" : "*"}</td>
                 <td className="num"><strong>{r.log_points}</strong></td>
               </tr>
             ))}
@@ -42,9 +42,9 @@ export default function StandingsPage() {
         </table>
       </div>
       <div className="notice">
-        {exact
-          ? "Points include every bonus point, read off the published final table for the season: no free feed carries the per-match try counts the try bonus needs."
-          : "* Points leave out the try bonus until the season's published table is on file: no free feed carries per-match try counts."}
+        {season.is_replay
+          ? "BP is bonus points, read off the season's published final table."
+          : <>BP is bonus points: 1 for losing by 7 or less, counted from the score as soon as a result lands, and 1 for scoring 4+ tries, read from Wikipedia&apos;s {competitions.get(season.competition_id)?.short_name ?? ""} log every two hours because the free results feed has no try counts.{pending && " * means Wikipedia hasn't caught up with that team's latest match yet, so a try bonus may still be added."}</>}
       </div>
     </>
   );

@@ -231,4 +231,21 @@ select pg_temp.as_user('00000000-0000-0000-0000-00000000000a');
 select pg_temp.check((select count(*) from public.predictions) = 3, 'you always see your own calls');
 reset role;
 
+-- Bonus points from Wikipedia's log: our losing bonus, their try bonus
+insert into public.matches (id, season, round, kickoff_at, home_team_id, away_team_id, home_score, away_score, status, source)
+values ('t-played', '2027', 1, now() - interval '3 hours', '142072', '142073', 31, 24, 'FT', 'test');
+insert into raw.feed_payloads (source, endpoint, params, payload)
+select 'wikipedia', 'wikipedia:parse', '{"season": "2027"}', jsonb_build_object('parse', jsonb_build_object('wikitext',
+  E'Intro\n{{#invoke:sports table|main|style=Rugby\n|section=URC league standings\n' ||
+  E'| team1  = AAA | name_AAA = {{flagdeco|RSA}} [[2027 ' || h.display_name || ' season|' || h.display_name || E' Rugby]]\n' ||
+  E'| team2  = BBB | name_BBB = {{flagdeco|RSA}} [[' || a.display_name || E']]\n' ||
+  E'| win_AAA = 1 | draw_AAA = 0 | loss_AAA = 0 | tb_AAA = 1 | lb_AAA = 0\n' ||
+  E'| win_BBB = 0 | draw_BBB = 0 | loss_BBB = 1 | tb_BBB = 1 | lb_BBB = 1\n}}\n{{#invoke:sports table|main|section=other\n| win_AAA = 9\n}}'))
+from public.teams h, public.teams a where h.id = '142072' and a.id = '142073';
+select pg_temp.check(public.core_load_wiki_log((select max(id) from raw.feed_payloads)) = 2, 'Wikipedia''s log lands for both teams');
+select pg_temp.check((select log_points from public.standings where season = '2027' and team_id = '142072') = 5, 'win with a try bonus = 5');
+select pg_temp.check((select log_points from public.standings where season = '2027' and team_id = '142073') = 2, 'loss by 7 with a try bonus = 2');
+select pg_temp.check((select bool_and(points_exact) from public.standings where season = '2027' and team_id in ('142072', '142073')), 'exact once Wikipedia has caught up');
+select pg_temp.check((select count(*) from public.standings where season = '2027') = 6, 'every team in the fixtures is on the log');
+
 \echo ALL CHECKS PASSED

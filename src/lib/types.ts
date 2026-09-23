@@ -18,7 +18,7 @@ export interface Prediction { entry_id: number; match_id: string; home_score: nu
 export interface StandingRow {
   team_id: string; played: number; won: number; drawn: number; lost: number;
   points_for: number; points_against: number; diff: number;
-  log_points: number; points_exact: boolean; position: number;
+  log_points: number; points_exact: boolean; position: number; bonus_points: number;
 }
 export interface LeaderRow {
   pool_id: number; user_id: string; manager: string; entry_id: number | null; team_name: string | null;
