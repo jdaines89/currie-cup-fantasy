@@ -1,4 +1,5 @@
 import { pts, kickoff } from "@/lib/format";
+import { Team, stripe } from "@/components/team";
 import {
   buildStandings, countPlayerStats, latestCompletedRound, leaderboard,
   listMatchesForRound, listPlayers, listRounds, listTeams, seasonComplete,
@@ -34,11 +35,11 @@ export default function Dashboard() {
             <tbody>
               {matches.map((m) => (
                 <tr key={m.id}>
-                  <td style={{ textAlign: "right" }}>{teams.get(m.home_team_id)?.display_name}</td>
+                  <td style={{ textAlign: "right" }}><Team team={teams.get(m.home_team_id)} align="right" bold={false} /></td>
                   <td className="score" style={{ textAlign: "center", width: 74 }}>
                     {m.home_score}&ndash;{m.away_score}
                   </td>
-                  <td>{teams.get(m.away_team_id)?.display_name}</td>
+                  <td><Team team={teams.get(m.away_team_id)} bold={false} /></td>
                 </tr>
               ))}
             </tbody>
@@ -59,8 +60,8 @@ export default function Dashboard() {
             </thead>
             <tbody>
               {log.map((r) => (
-                <tr key={r.team_id}>
-                  <td><strong>{teams.get(r.team_id)?.display_name}</strong></td>
+                <tr key={r.team_id} style={stripe(r.team_id)}>
+                  <td><Team team={teams.get(r.team_id)} /></td>
                   <td className="num">{r.played}</td>
                   <td className="num">{r.won}</td>
                   <td className="num">{r.diff > 0 ? `+${r.diff}` : r.diff}</td>

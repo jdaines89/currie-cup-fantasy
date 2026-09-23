@@ -1,4 +1,5 @@
 import { listRounds, listMatchesForRound, teamsById } from "@/lib/queries";
+import { Team, stripe } from "@/components/team";
 import { kickoff } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -22,12 +23,12 @@ export default function FixturesPage() {
                 return (
                   <tr key={m.id}>
                     <td style={{ width: "30%", textAlign: "right" }}>
-                      <strong>{home?.display_name}</strong>
+                      <Team team={home} align="right" />
                     </td>
                     <td className="score" style={{ width: 80, textAlign: "center" }}>
                       {played ? `${m.home_score} – ${m.away_score}` : <span className="muted">v</span>}
                     </td>
-                    <td style={{ width: "30%" }}><strong>{away?.display_name}</strong></td>
+                    <td style={{ width: "30%" }}><Team team={away} /></td>
                     <td className="muted small">{kickoff(m.kickoff_utc)}</td>
                     <td className="muted small">{m.venue}</td>
                   </tr>

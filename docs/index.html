@@ -46,6 +46,7 @@
   .num{font-family:"IBM Plex Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums}
 
   header{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--paper);border-bottom:1px solid var(--line)}
+  header::before{content:"";display:block;height:5px;background:linear-gradient(90deg,#2b4d9c 0 12.5%,#1d6b3c 0 25%,#f36f21 0 37.5%,#d2232a 0 50%,#1f6fb8 0 62.5%,#b5121b 0 75%,#161616 0 87.5%,#0b3a82 0)}
   .head-in{max-width:520px;margin:0 auto;padding:10px 16px 0}
   .brand{display:flex;align-items:baseline;gap:8px;justify-content:space-between}
   .brand h1{font-size:20px;text-transform:uppercase;letter-spacing:.06em;font-weight:600}
@@ -111,6 +112,12 @@
   }
   .side.on .tick{background:var(--gold);border-color:var(--gold);color:var(--on-gold)}
   .tick svg{width:14px;height:14px}
+  .crest{flex:0 0 auto;display:inline-grid;place-items:center;width:30px;height:30px;border-radius:50%;
+    font-family:Oswald,sans-serif;font-weight:600;font-size:10.5px;letter-spacing:.02em;
+    box-shadow:0 0 0 2px var(--card),0 0 0 3px color-mix(in srgb,var(--ink) 14%,transparent)}
+  .pteam .crest{display:grid;width:26px;height:26px;font-size:9.5px;margin:0 0 5px}
+  .pteam.away .crest{margin-left:auto}
+  .side{box-shadow:inset 4px 0 0 var(--team,transparent)}
   .tname{flex:1;min-width:0;font-size:15.5px;font-weight:600;letter-spacing:-.01em}
   .tname .sub{display:block;font-size:11.5px;font-weight:400;color:var(--muted)}
   .capbtn{
@@ -277,6 +284,16 @@
   "use strict";
 
   var DATA = {"teams":[{"id":"142062","n":"Bulls XV","s":"BUL","v":"Loftus Versfeld Stadium"},{"id":"142063","n":"Boland Cavaliers","s":"BOL","v":"Boland Stadium"},{"id":"142067","n":"Cheetahs","s":"CHE","v":"Toyota Stadium South Africa"},{"id":"142068","n":"Lions","s":"LIO","v":"Ellis Park Stadium"},{"id":"142070","n":"Griquas","s":"GRQ","v":"Griqua Park"},{"id":"142072","n":"Pumas","s":"PUM","v":"Mbombela Stadium"},{"id":"142073","n":"Sharks XV","s":"SHK","v":"Hollywoodbets Kings Park Stadium"},{"id":"142075","n":"Stormers XXIII","s":"WP","v":"DHL Stadium"}],"matches":[{"r":1,"k":"2026-07-17T14:00:00Z","h":"142072","a":"142073","hs":24,"as":26,"v":"Mbombela Stadium"},{"r":1,"k":"2026-07-17T16:05:00Z","h":"142075","a":"142070","hs":25,"as":19,"v":"DHL Stadium"},{"r":1,"k":"2026-07-19T10:00:00Z","h":"142067","a":"142068","hs":29,"as":27,"v":"Toyota Stadium South Africa"},{"r":1,"k":"2026-07-19T12:05:00Z","h":"142063","a":"142062","hs":24,"as":10,"v":"Boland Stadium"},{"r":2,"k":"2026-07-24T14:00:00Z","h":"142067","a":"142073","hs":43,"as":21,"v":"Toyota Stadium South Africa"},{"r":2,"k":"2026-07-25T12:00:00Z","h":"142068","a":"142072","hs":52,"as":29,"v":"Ellis Park Stadium"},{"r":2,"k":"2026-07-25T14:05:00Z","h":"142070","a":"142062","hs":56,"as":26,"v":"Griqua Park"},{"r":2,"k":"2026-07-26T12:00:00Z","h":"142063","a":"142075","hs":41,"as":3,"v":"Boland Stadium"},{"r":3,"k":"2026-07-31T17:00:00Z","h":"142070","a":"142067","hs":24,"as":21,"v":"Griqua Park"},{"r":3,"k":"2026-08-01T12:00:00Z","h":"142075","a":"142073","hs":36,"as":28,"v":"DHL Stadium"},{"r":3,"k":"2026-08-01T14:05:00Z","h":"142068","a":"142062","hs":42,"as":19,"v":"Ellis Park Stadium"},{"r":3,"k":"2026-08-02T12:00:00Z","h":"142063","a":"142072","hs":15,"as":20,"v":"Boland Stadium"},{"r":4,"k":"2026-08-08T10:00:00Z","h":"142070","a":"142068","hs":31,"as":19,"v":"Griqua Park"},{"r":4,"k":"2026-08-08T12:05:00Z","h":"142062","a":"142072","hs":31,"as":33,"v":"Loftus Versfeld Stadium"},{"r":4,"k":"2026-08-08T14:15:00Z","h":"142073","a":"142063","hs":19,"as":12,"v":"Princess Magogo Stadium","st":"INTR"},{"r":4,"k":"2026-08-09T12:00:00Z","h":"142075","a":"142067","hs":26,"as":31,"v":"Danie Craven Stadium"},{"r":5,"k":"2026-08-14T12:00:00Z","h":"142068","a":"142063","hs":29,"as":38,"v":"Ellis Park Stadium"},{"r":5,"k":"2026-08-14T14:05:00Z","h":"142070","a":"142073","hs":55,"as":21,"v":"Griqua Park"},{"r":5,"k":"2026-08-15T14:00:00Z","h":"142072","a":"142075","hs":29,"as":7,"v":"Mbombela Stadium"},{"r":5,"k":"2026-08-16T12:00:00Z","h":"142062","a":"142067","hs":52,"as":62,"v":"Loftus Versfeld Stadium"},{"r":6,"k":"2026-08-21T12:00:00Z","h":"142072","a":"142070","hs":14,"as":38,"v":"Mbombela Stadium"},{"r":6,"k":"2026-08-21T14:05:00Z","h":"142062","a":"142075","hs":26,"as":50,"v":"Loftus Versfeld Stadium"},{"r":6,"k":"2026-08-21T16:15:00Z","h":"142073","a":"142068","hs":22,"as":22,"v":"Woodburn Stadium"},{"r":6,"k":"2026-08-23T12:00:00Z","h":"142067","a":"142063","hs":33,"as":24,"v":"Toyota Stadium South Africa"},{"r":7,"k":"2026-08-28T14:05:00Z","h":"142068","a":"142075","hs":36,"as":12,"v":"Ellis Park Stadium"},{"r":7,"k":"2026-08-28T16:15:00Z","h":"142073","a":"142062","hs":53,"as":22,"v":"Hollywoodbets Kings Park Stadium"},{"r":7,"k":"2026-08-29T08:42:00Z","h":"142072","a":"142067","hs":52,"as":26,"v":"Mbombela Stadium"},{"r":7,"k":"2026-08-30T12:00:00Z","h":"142063","a":"142070","hs":17,"as":48,"v":"Boland Stadium"}]};
+
+  /* Jersey colours, mirrored from src/lib/team-brand.ts. This public page shows
+     coloured initials, never the unions' official badges: those are trademarks. */
+  var COL = {"142062":["#2b4d9c","#fff"],"142063":["#1d6b3c","#f4d03f"],"142067":["#f36f21","#fff"],
+             "142068":["#d2232a","#fff"],"142070":["#1f6fb8","#fff"],"142072":["#b5121b","#fff"],
+             "142073":["#161616","#fff"],"142075":["#0b3a82","#fff"]};
+  function crest(id){
+    var c = COL[id] || ["#3b4a44","#fff"];
+    return '<span class="crest" style="background:' + c[0] + ';color:' + c[1] + '" aria-hidden="true">' + esc(T[id].s) + '</span>';
+  }
 
   var PICKS_PER_ROUND = 4, KEY = "ccp2026";
   var T = {}, i;
@@ -530,9 +547,9 @@
       [m.h, m.a].forEach(function(id){
         var t = T[id], on = p.teams.indexOf(id) >= 0, cap = p.captain === id, pts = locked ? scorePick(id, m, cap) : null;
         html += '<button class="side' + (on ? " on" : "") + '" type="button" data-pick="' + id + '"' +
-                (locked ? " disabled" : "") + '>';
+                ' style="--team:' + (COL[id] || ["#3b4a44"])[0] + '"' + (locked ? " disabled" : "") + '>';
         html += '<span class="tick">' + TICK + '</span>';
-        html += '<span class="tname">' + esc(t.n) + '<span class="sub">' +
+        html += crest(id) + '<span class="tname">' + esc(t.n) + '<span class="sub">' +
                 (id === m.h ? "Home" : "Away") + ' · ' + esc(t.s) + '</span></span>';
         if(locked){
           var sc = (id === m.h) ? m.hs : m.as, other = (id === m.h) ? m.as : m.hs;
@@ -584,7 +601,7 @@
               (m.st === "INTR" && locked ? '<span class="tag">Interrupted</span>' : '') +
               '<span class="venue">' + esc(m.v) + '</span></div>';
       html += '<div class="pred">';
-      html += '<span class="pteam">' + esc(T[m.h].n) + '<span class="sub">Home</span></span>';
+      html += '<span class="pteam">' + crest(m.h) + esc(T[m.h].n) + '<span class="sub">Home</span></span>';
       html += '<input class="pbox' + (s[0] !== null && s[0] !== "" ? " filled" : "") + '" id="p-' + key +
               '-h" type="number" inputmode="numeric" min="0" max="99" placeholder="—" value="' +
               (s[0] === null ? "" : s[0]) + '" data-pred="' + key + '" data-side="0" aria-label="' +
@@ -594,7 +611,7 @@
               '-a" type="number" inputmode="numeric" min="0" max="99" placeholder="—" value="' +
               (s[1] === null ? "" : s[1]) + '" data-pred="' + key + '" data-side="1" aria-label="' +
               esc(T[m.a].n) + ' score"' + (locked ? " disabled" : "") + '>';
-      html += '<span class="pteam away">' + esc(T[m.a].n) + '<span class="sub">Away</span></span>';
+      html += '<span class="pteam away">' + crest(m.a) + esc(T[m.a].n) + '<span class="sub">Away</span></span>';
       html += '</div>';
 
       if(locked && s[0] !== null && s[1] !== null){
