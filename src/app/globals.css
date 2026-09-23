@@ -312,3 +312,13 @@ details.mates li .pts { text-align: right; color: var(--accent); font-weight: 70
 .who { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .btotal { font-size: 24px; font-weight: 800; font-variant-numeric: tabular-nums; }
 .bparts { display: flex; flex-wrap: wrap; gap: 5px; margin: 10px 0 0; }
+.board li { cursor: pointer; }
+.board li.open { border-color: var(--accent); }
+.h2h { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); cursor: default; }
+.h2h table { font-size: 13px; }
+.h2h .rrow { cursor: pointer; }
+.h2h .rrow td { font-weight: 600; }
+.h2h .mrow td { font-size: 12px; background: var(--panel); vertical-align: top; }
+.h2h .pts { color: var(--accent); font-weight: 700; }
+.h2h .up { color: var(--accent); }
+.h2h .down { color: var(--danger); }
