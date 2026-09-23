@@ -28,7 +28,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
   }
   if (session === undefined) return <p className="muted">Loading&hellip;</p>;
   if (!session) return <SignIn />;
-  if (mustSetPassword) return <SetPassword email={session.user.email ?? ""} onDone={() => setMustSetPassword(false)} />;
+  if (mustSetPassword) return <SetPassword email={session.user.email ?? ""} reset={arrivedVia === "recovery"} onDone={() => setMustSetPassword(false)} />;
   return <>{children}</>;
 }
 
@@ -47,9 +47,9 @@ function SignIn() {
   }
 
   async function forgot() {
-    if (!email) { setMsg("Type your email first, then tap forgot password."); return; }
+    if (!email) { setMsg("Type your email above first, then tap Forgot your password."); return; }
     await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + (process.env.NEXT_PUBLIC_BASE_PATH || "") + "/" });
-    setMsg("If that email has an account, a reset link is on its way.");
+    setMsg("If that email has an account, a reset link is on its way. Check spam if it doesn't show up in a minute.");
   }
 
   return (
@@ -60,14 +60,14 @@ function SignIn() {
         <input type="email" required placeholder="Email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
         <input type="password" required placeholder="Password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
         <button type="submit" disabled={busy}>{busy ? "Signing in…" : "Sign in"}</button>
-        <button type="button" className="ghost" onClick={forgot}>Forgot password</button>
+        <button type="button" className="linkish forgot" onClick={forgot}>Forgot your password?</button>
       </form>
       {msg && <p className="small muted" style={{ marginBottom: 0 }}>{msg}</p>}
     </div>
   );
 }
 
-function SetPassword({ email, onDone }: { email: string; onDone: () => void }) {
+function SetPassword({ email, reset, onDone }: { email: string; reset: boolean; onDone: () => void }) {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
@@ -86,10 +86,10 @@ function SetPassword({ email, onDone }: { email: string; onDone: () => void }) {
 
   return (
     <div className="card narrow">
-      <h2>Welcome to the league</h2>
-      <p className="sub">Choose a password for {email}. You'll use it to sign in from now on.</p>
+      <h2>{reset ? "Choose a new password" : "Welcome to the league"}</h2>
+      <p className="sub">{reset ? `For ${email}.` : `Choose a password for ${email}. You'll use it to sign in from now on.`}</p>
       <form onSubmit={submit} className="stack">
-        <input placeholder="Your name, as the others will see it" value={name} onChange={(e) => setName(e.target.value)} />
+        {!reset && <input placeholder="Your name, as the others will see it" value={name} onChange={(e) => setName(e.target.value)} />}
         <input type="password" required placeholder="New password (8+ characters)" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} />
         <button type="submit">Save and continue</button>
       </form>

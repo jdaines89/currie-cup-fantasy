@@ -50,6 +50,12 @@ export function Nav() {
   const unread = useUnread(uid);
   if (!uid) return <nav className="tabs" />;
   return (
+    <>
+    <Link href="/me/" className={`melink${path === "/me/" ? " on" : ""}`} aria-label="Your profile">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+        <circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" />
+      </svg>
+    </Link>
     <nav className="tabs">
       {TABS.map(([href, label]) => (
         <Link key={href} href={href} className={path === href ? "on" : ""}>
@@ -58,7 +64,7 @@ export function Nav() {
             <span className={unread.tagged ? "count at" : "count"}>{unread.tagged ? "@" : unread.count}</span>}
         </Link>
       ))}
-      <button className="ghost signout" onClick={() => supabase.auth.signOut()}>Sign out</button>
     </nav>
+    </>
   );
 }
