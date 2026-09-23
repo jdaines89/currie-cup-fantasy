@@ -9,7 +9,7 @@
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { TEAM_BRAND } from "../src/lib/team-brand";
+import { TEAM_BRAND } from "../supabase/team-brand";
 
 const root = process.cwd();
 const seed = JSON.parse(readFileSync(join(root, "data/seed/currie-cup-2026.json"), "utf8"));

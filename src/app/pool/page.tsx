@@ -1,118 +1,110 @@
-import { savePoolPicks } from "@/lib/actions";
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import { NeedsEntry, useLeague } from "@/components/league";
+import { RoundPicker } from "@/components/round-picker";
 import { Team, stripe } from "@/components/team";
-import { resolveEntry } from "@/lib/entry";
-import { kickoff, pts } from "@/lib/format";
-import {
-  listMatchesForRound, listRounds, poolPicks, roundLocked,
-  scoresForEntry, seasonComplete, teamsById,
-} from "@/lib/queries";
-import { POOL_RULES } from "@/lib/scoring";
-import { EntrySwitcher } from "../entry-switcher";
-import { NewTeamForm } from "../new-team";
+import { kickoff } from "@/lib/format";
+import { firstOpenRound, lockRound, useRoundLocks } from "@/lib/rounds";
+import { supabase } from "@/lib/supabase";
+import type { PoolPick } from "@/lib/types";
 
-export const dynamic = "force-dynamic";
+interface PickScore { team_id: string; result_pts: number; attack_pts: number; defence_pts: number; bonus_pts: number; total_pts: number }
 
-const PICKS_PER_ROUND = 4;
+export default function PoolPage() {
+  return <NeedsEntry><Pool /></NeedsEntry>;
+}
 
-export default async function PoolPage({ searchParams }: {
-  searchParams: Promise<{ entry?: string; round?: string }>;
-}) {
-  const params = await searchParams;
-  const { entry, all } = resolveEntry(params.entry);
-  if (!entry) return <NewTeamForm heading="Start a team to play the union pool" />;
+function Pool() {
+  const { entry, season, matches, rounds, teams } = useLeague();
+  const { locked, isLocked, reload: reloadLocks } = useRoundLocks(entry!.id, season, matches);
+  const [round, setRound] = useState<number | null>(null);
+  const [picks, setPicks] = useState<PoolPick[]>([]);
+  const [scores, setScores] = useState<PickScore[]>([]);
+  const [msg, setMsg] = useState<string | null>(null);
 
-  const rounds = listRounds();
-  const round = Number(params.round) || rounds[rounds.length - 1] || 1;
-  const teams = teamsById();
-  const matches = listMatchesForRound(round);
-  const picks = poolPicks(entry.id, round);
+  useEffect(() => { if (round === null && rounds.length) setRound(firstOpenRound(rounds, isLocked)); }, [round, rounds, isLocked]);
+
+  const load = useCallback(async () => {
+    if (round === null) return;
+    const [p, s] = await Promise.all([
+      supabase.from("pool_picks").select("*").eq("entry_id", entry!.id).eq("round", round),
+      supabase.from("pool_pick_scores").select("*").eq("entry_id", entry!.id).eq("round", round),
+    ]);
+    setPicks((p.data ?? []) as PoolPick[]);
+    setScores((s.data ?? []) as PickScore[]);
+  }, [entry, round]);
+  useEffect(() => { load(); }, [load]);
+
+  if (round === null) return null;
+  const done = isLocked(round);
+  const ms = matches.filter((m) => m.round === round);
   const picked = new Set(picks.map((p) => p.team_id));
-  const captain = picks.find((p) => p.is_captain)?.team_id ?? "";
-  const locked = roundLocked(round);
-  const scored = scoresForEntry(entry.id).find((s) => s.round === round && s.mode === "pool");
+  const captain = picks.find((p) => p.is_captain)?.team_id;
+  const scoreOf = new Map(scores.map((s) => [s.team_id, s]));
+  const total = scores.reduce((a, s) => a + s.total_pts, 0);
+
+  async function run(op: PromiseLike<{ error: { message: string } | null }>) {
+    setMsg(null);
+    const { error } = await op;
+    if (error) setMsg(error.message);
+    await load();
+  }
+
+  const toggle = (teamId: string) => run(picked.has(teamId)
+    ? supabase.from("pool_picks").delete().eq("entry_id", entry!.id).eq("round", round).eq("team_id", teamId)
+    : supabase.from("pool_picks").insert({ entry_id: entry!.id, season: season.id, round, team_id: teamId }));
+
+  async function makeCaptain(teamId: string) {
+    setMsg(null);
+    if (captain) await supabase.from("pool_picks").update({ is_captain: false }).eq("entry_id", entry!.id).eq("round", round).eq("team_id", captain);
+    if (captain !== teamId) await run(supabase.from("pool_picks").update({ is_captain: true }).eq("entry_id", entry!.id).eq("round", round).eq("team_id", teamId));
+    else await load();
+  }
+
+  async function lockIn() {
+    setMsg(null);
+    const { error } = await lockRound(entry!.id, season.id, round!);
+    if (error) setMsg(error.message);
+    await reloadLocks(); await load();
+  }
 
   return (
     <>
-      <EntrySwitcher entries={all} current={entry} path="/pool" />
-
-      <div className="rounds">
-        {rounds.map((r) => (
-          <a key={r} href={`/pool?entry=${entry.id}&round=${r}`} className={r === round ? "on" : ""}>
-            R{r}
-          </a>
-        ))}
-      </div>
-
-      {seasonComplete() && (
-        <div className="notice">
-          <strong>Replay mode.</strong> Every match in the database has been played, so picks
-          are open on all rounds and you are playing the season back. Ingest a live round
-          and picks lock at kickoff again.
-        </div>
-      )}
-
+      <RoundPicker rounds={rounds} round={round} onPick={setRound} locked={locked} />
       <div className="card">
-        <h2>Round {round} &mdash; pick {PICKS_PER_ROUND} unions</h2>
+        <h2>Round {round} {done && <span className="badge win">locked</span>}</h2>
         <p className="sub">
-          {locked
-            ? "This round is locked."
-            : `Tick ${PICKS_PER_ROUND} unions and star one as captain to double its score.`}
-          {scored && <> You scored <strong>{pts(scored.points)}</strong> here.</>}
+          {done
+            ? <>You scored <strong>{total}</strong> this round.</>
+            : <>Pick four unions, then star one as captain to double its score. {season.is_replay ? "Lock the round in to see how it scored: you can't change it after that." : "Picks lock at the round's first kickoff."}</>}
         </p>
-
-        <form action={savePoolPicks}>
-          <input type="hidden" name="entry_id" value={entry.id} />
-          <input type="hidden" name="round" value={round} />
-
-          {matches.map((m) => {
-            const home = teams.get(m.home_team_id)!;
-            const away = teams.get(m.away_team_id)!;
-            const played = m.home_score !== null;
-            return (
-              <div key={m.id} style={{ marginBottom: 14 }}>
-                <div className="muted small" style={{ marginBottom: 6 }}>
-                  {kickoff(m.kickoff_utc)} &middot; {m.venue}
-                  {played && <> &middot; <span className="score">{m.home_score}&ndash;{m.away_score}</span></>}
+        {ms.map((m) => (
+          <div key={m.id} className="match">
+            <div className="mhead">
+              <span>{kickoff(m.kickoff_at)}</span><span>{m.venue}</span>
+            </div>
+            {[m.home_team_id, m.away_team_id].map((id) => {
+              const t = teams.get(id); const on = picked.has(id); const sc = scoreOf.get(id);
+              const theirs = id === m.home_team_id ? m.home_score : m.away_score;
+              return (
+                <div key={id} className={`pickrow ${on ? "on" : ""}`} style={stripe(t)}>
+                  <button type="button" className={`tick ${on ? "on" : ""}`} disabled={done} onClick={() => toggle(id)} aria-pressed={on} aria-label={`Pick ${t?.display_name}`}>✓</button>
+                  <span className="grow"><Team team={t} /></span>
+                  {done
+                    ? <>{theirs !== null && <span className="muted small">{theirs}</span>}<span className="pts">{sc ? sc.total_pts : on ? "–" : ""}</span></>
+                    : on && <button type="button" className={`cap ${captain === id ? "on" : ""}`} onClick={() => makeCaptain(id)}>★ Captain</button>}
                 </div>
-                {[home, away].map((t) => (
-                  <label key={t.id} className={`pickrow ${picked.has(t.id) ? "on" : ""}`} style={stripe(t.id)}>
-                    <input
-                      type="checkbox" name="team" value={t.id}
-                      defaultChecked={picked.has(t.id)} disabled={locked}
-                    />
-                    <span className="grow">
-                      <span className="name"><Team team={t} /></span>
-                      <span className="muted small"> &middot; {t.stadium}</span>
-                    </span>
-                    <span className="small muted">captain</span>
-                    <input
-                      type="radio" name="captain" value={t.id}
-                      defaultChecked={captain === t.id} disabled={locked}
-                    />
-                  </label>
-                ))}
-              </div>
-            );
-          })}
-
-          <button type="submit" disabled={locked}>Save round {round} picks</button>
-        </form>
-      </div>
-
-      <div className="card">
-        <h2>How a union scores</h2>
-        <p className="sub">Straight off the real result. Nothing to enter by hand.</p>
-        <table>
-          <tbody>
-            <tr><td>Win</td><td className="num">{POOL_RULES.win}</td></tr>
-            <tr><td>Draw</td><td className="num">{POOL_RULES.draw}</td></tr>
-            <tr><td>Every {POOL_RULES.pointsScoredPer} points scored</td><td className="num">+1</td></tr>
-            <tr><td>Every {POOL_RULES.pointsConcededPer} points conceded</td><td className="num">&minus;1</td></tr>
-            <tr><td>Winning by {POOL_RULES.bigWinMargin}+</td><td className="num">+{POOL_RULES.bigWinBonus}</td></tr>
-            <tr><td>Losing by {POOL_RULES.narrowLossMargin} or less</td><td className="num">+{POOL_RULES.narrowLossBonus}</td></tr>
-            <tr><td>Captain</td><td className="num">&times;{POOL_RULES.captainMultiplier}</td></tr>
-          </tbody>
-        </table>
+              );
+            })}
+          </div>
+        ))}
+        {msg && <p className="small" style={{ color: "var(--danger)" }}>{msg}</p>}
+        {!done && season.is_replay && (
+          <button type="button" disabled={picked.size !== 4 || !captain} onClick={lockIn}>
+            {picked.size !== 4 ? `Pick ${4 - picked.size} more` : !captain ? "Choose a captain" : `Lock in round ${round}`}
+          </button>
+        )}
       </div>
     </>
   );

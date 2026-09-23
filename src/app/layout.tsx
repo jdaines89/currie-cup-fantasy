@@ -1,20 +1,13 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { AuthGate } from "@/components/auth-gate";
+import { LeagueProvider } from "@/components/league";
+import { Nav } from "@/components/nav";
 
 export const metadata: Metadata = {
   title: "Currie Cup Fantasy",
-  description: "Fantasy rugby for the Currie Cup, running on free live data.",
+  description: "An invite-only Currie Cup fantasy league on real results.",
 };
-
-const TABS = [
-  ["/", "Dashboard"],
-  ["/pool", "Union Pool"],
-  ["/squad", "Squad"],
-  ["/fixtures", "Fixtures"],
-  ["/standings", "Log"],
-  ["/leaderboard", "Leaderboard"],
-  ["/admin", "Admin"],
-];
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -23,13 +16,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <header className="top">
           <div className="shell">
             <div className="brand">Currie Cup <span>Fantasy</span></div>
-            <div className="tagline">Eight unions, real results, no subscription.</div>
-            <nav className="tabs">
-              {TABS.map(([href, label]) => <a key={href} href={href}>{label}</a>)}
-            </nav>
+            <div className="tagline">Eight unions, real results, invite only.</div>
+            <Nav />
           </div>
         </header>
-        <main className="shell">{children}</main>
+        <main className="shell">
+          <AuthGate>
+            <LeagueProvider>{children}</LeagueProvider>
+          </AuthGate>
+        </main>
       </body>
     </html>
   );

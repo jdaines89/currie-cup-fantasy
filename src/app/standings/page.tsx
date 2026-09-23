@@ -1,68 +1,51 @@
-import { buildStandings, listTeams, latestCompletedRound } from "@/lib/queries";
+"use client";
+
+import { useEffect, useState } from "react";
+import { useLeague } from "@/components/league";
 import { Team, stripe } from "@/components/team";
 import { signed } from "@/lib/format";
-
-export const dynamic = "force-dynamic";
+import { supabase } from "@/lib/supabase";
+import type { StandingRow } from "@/lib/types";
 
 export default function StandingsPage() {
-  const teams = new Map(listTeams().map((t) => [t.id, t]));
-  const log = buildStandings();
-  const round = latestCompletedRound();
-  const allExact = log.every((row) => row.points_exact);
+  const { season, teams } = useLeague();
+  const [log, setLog] = useState<StandingRow[]>([]);
+  useEffect(() => {
+    supabase.from("standings").select("*").eq("season", season.id).order("position")
+      .then(({ data }) => setLog((data ?? []) as StandingRow[]));
+  }, [season.id]);
+  const exact = log.length > 0 && log.every((r) => r.points_exact);
 
   return (
     <>
-      <div className="card">
+      <div className="card scroll-x">
         <h2>Currie Cup log</h2>
-        <p className="sub">After round {round}. Built from real results in the database.</p>
+        <p className="sub">{season.name}. Built live from the results in the database.</p>
         <table>
-          <thead>
-            <tr>
-              <th>#</th><th>Union</th>
-              <th className="num">P</th><th className="num">W</th>
-              <th className="num">D</th><th className="num">L</th>
-              <th className="num">PF</th><th className="num">PA</th>
-              <th className="num">Diff</th><th className="num">{allExact ? "Pts" : "Pts*"}</th>
-            </tr>
-          </thead>
+          <thead><tr>
+            <th>#</th><th>Union</th><th className="num">P</th><th className="num">W</th><th className="num">D</th>
+            <th className="num">L</th><th className="num hide-sm">PF</th><th className="num hide-sm">PA</th>
+            <th className="num">Diff</th><th className="num">Pts{exact ? "" : "*"}</th>
+          </tr></thead>
           <tbody>
-            {log.map((row, i) => (
-              <tr key={row.team_id} style={stripe(row.team_id)}>
-                <td className="muted">{i + 1}</td>
-                <td><Team team={teams.get(row.team_id)} /></td>
-                <td className="num">{row.played}</td>
-                <td className="num">{row.won}</td>
-                <td className="num">{row.drawn}</td>
-                <td className="num">{row.lost}</td>
-                <td className="num">{row.points_for}</td>
-                <td className="num">{row.points_against}</td>
-                <td className="num">{signed(row.diff)}</td>
-                <td className="num">{row.estimated_points}{!row.points_exact && "*"}</td>
+            {log.map((r) => (
+              <tr key={r.team_id} style={stripe(teams.get(r.team_id))}>
+                <td className="muted">{r.position}</td>
+                <td><Team team={teams.get(r.team_id)} /></td>
+                <td className="num">{r.played}</td><td className="num">{r.won}</td><td className="num">{r.drawn}</td>
+                <td className="num">{r.lost}</td><td className="num hide-sm">{r.points_for}</td>
+                <td className="num hide-sm">{r.points_against}</td><td className="num">{signed(r.diff)}</td>
+                <td className="num"><strong>{r.log_points}</strong></td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-
-      {allExact ? (
-        <div className="notice">
-          Every column here, including points, is exact: won, drawn and lost, points for and
-          against, and the real total log points for the season &mdash; four for a win, two for a
-          draw, and every bonus point including the try bonus &mdash; read off the published 2026
-          final standings rather than computed, since no free feed carries the per-match try
-          counts that bonus needs.
-        </div>
-      ) : (
-        <div className="notice">
-          <strong>* Points leave out the try bonus.</strong> Four for a win, two for a draw, one
-          for losing by seven or less &mdash; all exact, read straight off the score. The real
-          Currie Cup also awards one point for scoring four or more tries in a match, and no free
-          feed publishes try counts for this competition, so this column runs a few points below
-          the real total, more for a side that scored a lot of tries. Everything to the left of it
-          is exact, and the table is ranked on match points from wins and draws, then points
-          difference, never on this column.
-        </div>
-      )}
+      <div className="notice">
+        {exact
+          ? "Points include every bonus point, read off the published final table for the season: no free feed carries the per-match try counts the try bonus needs."
+          : "* Points leave out the try bonus until the season's published table is on file: no free feed carries per-match try counts."}
+      </div>
     </>
   );
 }

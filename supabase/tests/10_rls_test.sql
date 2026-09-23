@@ -3,9 +3,10 @@
 \set ON_ERROR_STOP on
 
 -- Two invited members and one stranger who was never invited.
-insert into auth.users (id, email, raw_user_meta_data) values
-  ('00000000-0000-0000-0000-00000000000a', 'justin@example.com', '{"display_name":"Justin"}'),
-  ('00000000-0000-0000-0000-00000000000b', 'andy@example.com', '{}');
+insert into auth.users (id, email, invited_at, raw_user_meta_data) values
+  ('00000000-0000-0000-0000-00000000000a', 'justin@example.com', now(), '{"display_name":"Justin"}'),
+  ('00000000-0000-0000-0000-00000000000b', 'andy@example.com', now(), '{}'),
+  ('00000000-0000-0000-0000-0000000000ff', 'stranger@example.com', null, '{}');  -- signed up without an invite
 select 'members created by the invite trigger: ' || count(*) from public.members;
 
 create function pg_temp.check(ok boolean, what text) returns void language plpgsql as
@@ -41,6 +42,8 @@ do $$ begin
 exception when insufficient_privilege then raise notice 'ok: anon cannot read matches';
 end $$;
 reset role;
+
+select pg_temp.check((select count(*) from public.members) = 2, 'only invited accounts become members');
 
 -- Signed in but never invited: sees nothing, can't make an entry
 select pg_temp.as_user('00000000-0000-0000-0000-0000000000ff');

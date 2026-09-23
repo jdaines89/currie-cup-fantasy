@@ -1,76 +1,37 @@
-import { pts } from "@/lib/format";
-import { leaderboard, listRounds, scoresForEntry } from "@/lib/queries";
-import { NewTeamForm } from "../new-team";
+"use client";
 
-export const dynamic = "force-dynamic";
+import { useEffect, useState } from "react";
+import { useLeague } from "@/components/league";
+import { supabase } from "@/lib/supabase";
+import type { LeaderRow } from "@/lib/types";
 
 export default function LeaderboardPage() {
-  const rows = leaderboard();
-  const rounds = listRounds();
-
-  if (rows.length === 0) return <NewTeamForm heading="No teams yet" />;
-
-  const perRound = new Map(
-    rows.map((r) => {
-      const scores = scoresForEntry(r.entry_id);
-      const totals = new Map<number, number>();
-      for (const s of scores) totals.set(s.round, (totals.get(s.round) ?? 0) + s.points);
-      return [r.entry_id, totals];
-    }),
-  );
+  const { season, entry } = useLeague();
+  const [rows, setRows] = useState<LeaderRow[]>([]);
+  useEffect(() => {
+    supabase.from("leaderboard").select("*").eq("season", season.id).order("total_points", { ascending: false })
+      .then(({ data }) => setRows((data ?? []) as LeaderRow[]));
+  }, [season.id]);
 
   return (
-    <>
-      <div className="card">
-        <h2>Leaderboard</h2>
-        <p className="sub">Union pool and player squad points, added together.</p>
+    <div className="card">
+      <h2>Leaderboard</h2>
+      <p className="sub">Everyone in the league. Only rounds that are locked in count.</p>
+      {rows.length === 0 ? <p className="muted">No teams yet.</p> : (
         <table>
-          <thead>
-            <tr>
-              <th>#</th><th>Team</th><th>Manager</th>
-              <th className="num">Pool</th><th className="num">Squad</th><th className="num">Total</th>
-            </tr>
-          </thead>
+          <thead><tr><th>#</th><th>Team</th><th className="num">Pool</th><th className="num">Predict</th><th className="num">Total</th></tr></thead>
           <tbody>
             {rows.map((r, i) => (
-              <tr key={r.entry_id}>
+              <tr key={r.entry_id} className={r.entry_id === entry?.id ? "me" : ""}>
                 <td className="muted">{i + 1}</td>
-                <td><strong>{r.team_name}</strong></td>
-                <td className="muted">{r.manager}</td>
-                <td className="num">{pts(r.pool_points)}</td>
-                <td className="num">{pts(r.player_points)}</td>
-                <td className="num"><strong>{pts(r.total)}</strong></td>
+                <td><strong>{r.team_name}</strong><div className="small muted">{r.manager} · {r.rounds_scored} rounds</div></td>
+                <td className="num">{r.pool_points}</td><td className="num">{r.predict_points}</td>
+                <td className="num"><strong>{r.total_points}</strong></td>
               </tr>
             ))}
           </tbody>
         </table>
-      </div>
-
-      <div className="card">
-        <h2>Round by round</h2>
-        <p className="sub">Blank means no picks were saved for that round.</p>
-        <table>
-          <thead>
-            <tr>
-              <th>Team</th>
-              {rounds.map((r) => <th key={r} className="num">R{r}</th>)}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.entry_id}>
-                <td><strong>{r.team_name}</strong></td>
-                {rounds.map((round) => {
-                  const v = perRound.get(r.entry_id)?.get(round);
-                  return <td key={round} className="num">{v === undefined ? <span className="muted">&mdash;</span> : pts(v)}</td>;
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      <NewTeamForm heading="Add another team" />
-    </>
+      )}
+    </div>
   );
 }
