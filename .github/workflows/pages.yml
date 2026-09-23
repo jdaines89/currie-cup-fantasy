@@ -35,8 +35,9 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
-      # The old single-file phone demo stays reachable at /demo/.
-      - run: mkdir -p out/demo && cp docs/index.html out/demo/index.html && touch out/.nojekyll
+      # Only the sign-in-gated app is published; the old demo (docs/) is not,
+      # since it shows the union badges to anyone with the link.
+      - run: touch out/.nojekyll
       - uses: actions/upload-pages-artifact@v3
         with:
           path: out

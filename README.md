@@ -28,7 +28,7 @@ on a local Postgres 16 and runs the security and rules checks.
 ## Deploy
 
 Every push to `main` builds and publishes to GitHub Pages
-(`.github/workflows/pages.yml`). The old single-file demo is kept at `/demo/`.
+(`.github/workflows/pages.yml`). The old single-file demo in `docs/` is not published: everything on the site sits behind the invite-only sign-in.
 
 ## Team badges
 
