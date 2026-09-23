@@ -1,28 +1,26 @@
-import { teamBrand, showOfficialLogos } from "@/lib/team-brand";
+"use client";
 
-interface TeamLike { id: string; display_name: string; short_name: string }
+import { useState } from "react";
+import type { Team as TeamRow } from "@/lib/types";
 
-/** The union's crest: the official badge, or a jersey-colour disc with its initials. */
-export function Crest({ team, size = 26 }: { team: TeamLike; size?: number }) {
-  const brand = teamBrand(team.id);
+/** The union's official badge, or its jersey colour with initials if the badge won't load. */
+export function Crest({ team, size = 26 }: { team: TeamRow; size?: number }) {
+  const [failed, setFailed] = useState(false);
   const style = { width: size, height: size };
-  if (brand.badge && showOfficialLogos()) {
-    return <img className="crest" src={brand.badge} alt="" style={style} loading="lazy" />;
+  if (team.badge_url && !failed) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img className="crest" src={team.badge_url} alt="" style={style} loading="lazy" onError={() => setFailed(true)} />;
   }
   return (
-    <span
-      className="crest disc"
-      style={{ ...style, background: brand.primary, color: brand.ink, fontSize: size * 0.36 }}
-      aria-hidden
-    >
+    <span className="crest disc" aria-hidden
+      style={{ ...style, background: team.colour ?? "#3b4a44", color: team.colour_ink ?? "#fff", fontSize: size * 0.36 }}>
       {team.short_name}
     </span>
   );
 }
 
-/** Crest plus name, with the name on the side the crest should sit. */
 export function Team({ team, align = "left", bold = true }: {
-  team: TeamLike | undefined; align?: "left" | "right"; bold?: boolean;
+  team: TeamRow | undefined; align?: "left" | "right"; bold?: boolean;
 }) {
   if (!team) return null;
   const name = bold ? <strong>{team.display_name}</strong> : <span>{team.display_name}</span>;
@@ -33,7 +31,6 @@ export function Team({ team, align = "left", bold = true }: {
   );
 }
 
-/** Inline style giving a row a stripe in the team's jersey colour. */
-export function stripe(id: string) {
-  return { boxShadow: `inset 4px 0 0 ${teamBrand(id).primary}` };
+export function stripe(team: TeamRow | undefined) {
+  return { boxShadow: `inset 4px 0 0 ${team?.colour ?? "transparent"}` };
 }

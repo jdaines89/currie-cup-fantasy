@@ -1,9 +1,10 @@
 -- Layer 3: league. What the members do: their entries and picks.
 --
 -- Access is invite-only. Supabase Auth creates an auth.users row when an
--- invite is sent; the trigger below turns every such user into a member.
--- Public sign-up is switched off in the project's auth settings, so there is
--- no other way in.
+-- invite is sent; the trigger below turns every invited user into a member.
+-- Only invites count (invited_at is set): if public sign-up were ever
+-- switched back on by mistake, a self-registered account gets no member row,
+-- so row-level security still shows it nothing.
 
 create table public.members (
   user_id      uuid primary key references auth.users(id) on delete cascade,
@@ -20,6 +21,9 @@ security definer
 set search_path = public
 as $$
 begin
+  if new.invited_at is null then
+    return new;
+  end if;
   insert into public.members (user_id, email, display_name)
   values (new.id, new.email,
           coalesce(new.raw_user_meta_data ->> 'display_name', split_part(new.email, '@', 1)))

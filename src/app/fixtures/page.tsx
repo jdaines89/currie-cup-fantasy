@@ -1,41 +1,29 @@
-import { listRounds, listMatchesForRound, teamsById } from "@/lib/queries";
-import { Team, stripe } from "@/components/team";
+"use client";
+
+import { useLeague } from "@/components/league";
+import { Team } from "@/components/team";
 import { kickoff } from "@/lib/format";
 
-export const dynamic = "force-dynamic";
-
 export default function FixturesPage() {
-  const teams = teamsById();
-  const rounds = listRounds();
-
+  const { rounds, matches, teams } = useLeague();
   return (
     <>
-      {rounds.map((round) => (
-        <div className="card" key={round}>
-          <h2>Round {round}</h2>
-          <p className="sub">{listMatchesForRound(round).length} matches</p>
-          <table>
-            <tbody>
-              {listMatchesForRound(round).map((m) => {
-                const home = teams.get(m.home_team_id);
-                const away = teams.get(m.away_team_id);
-                const played = m.home_score !== null && m.away_score !== null;
-                return (
-                  <tr key={m.id}>
-                    <td style={{ width: "30%", textAlign: "right" }}>
-                      <Team team={home} align="right" />
-                    </td>
-                    <td className="score" style={{ width: 80, textAlign: "center" }}>
-                      {played ? `${m.home_score} – ${m.away_score}` : <span className="muted">v</span>}
-                    </td>
-                    <td style={{ width: "30%" }}><Team team={away} /></td>
-                    <td className="muted small">{kickoff(m.kickoff_utc)}</td>
-                    <td className="muted small">{m.venue}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+      {rounds.map((r) => (
+        <div className="card" key={r}>
+          <h2>Round {r}</h2>
+          <table><tbody>
+            {matches.filter((m) => m.round === r).map((m) => (
+              <tr key={m.id}>
+                <td style={{ textAlign: "right", width: "36%" }}><Team team={teams.get(m.home_team_id)} align="right" /></td>
+                <td className="score" style={{ textAlign: "center" }}>
+                  {m.home_score !== null ? `${m.home_score}–${m.away_score}` : <span className="muted">v</span>}
+                  {m.status === "INTR" && <div className="small muted">interrupted, score stood</div>}
+                </td>
+                <td style={{ width: "36%" }}><Team team={teams.get(m.away_team_id)} /></td>
+                <td className="muted small hide-sm">{kickoff(m.kickoff_at)}<br />{m.venue}</td>
+              </tr>
+            ))}
+          </tbody></table>
         </div>
       ))}
     </>

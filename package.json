@@ -2,30 +2,23 @@
   "name": "currie-cup-fantasy",
   "version": "0.1.0",
   "private": true,
-  "description": "Fantasy rugby for the Currie Cup, built on free real-time data.",
+  "description": "Invite-only Currie Cup fantasy league on Supabase and real results.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "db:reset": "tsx scripts/reset.ts",
-    "seed": "tsx scripts/seed.ts",
-    "ingest": "tsx scripts/ingest.ts",
-    "import:roster": "tsx scripts/import-roster.ts",
-    "import:stats": "tsx scripts/import-stats.ts",
-    "score": "tsx scripts/score.ts",
-    "setup": "npm run db:reset && npm run seed && npm run score"
+    "db:seed-sql": "tsx scripts/supabase-seed.ts",
+    "db:test": "sh supabase/tests/run.sh"
   },
   "dependencies": {
-    "better-sqlite3": "^11.10.0",
+    "@supabase/supabase-js": "^2.117.0",
     "next": "^15.5.4",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "zod": "^3.25.76"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^22.18.1",
     "@types/react": "^19.1.13",
     "@types/react-dom": "^19.1.9",

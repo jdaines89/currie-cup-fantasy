@@ -81,4 +81,7 @@ grant select on public.pool_pick_scores, public.prediction_scores, public.standi
   public.round_totals, public.leaderboard to authenticated;
 
 revoke execute on function public.is_member(), public.owns_entry(bigint),
-  public.round_locked(bigint, text, int) from anon;
+  public.round_locked(bigint, text, int) from anon, public;
+grant execute on function public.is_member(), public.owns_entry(bigint),
+  public.round_locked(bigint, text, int) to authenticated;
+revoke execute on function public.handle_new_user() from anon, authenticated, public;
