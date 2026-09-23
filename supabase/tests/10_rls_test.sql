@@ -25,7 +25,7 @@ end $$;
 
 -- Data landed
 select pg_temp.check((select count(*) from public.matches) = 28, 'seed: 28 matches');
-select pg_temp.check((select count(*) from public.teams where badge_url is not null) = 8, 'seed: 8 badges');
+select pg_temp.check((select count(*) from public.teams t where badge_url is not null and exists (select 1 from public.matches m where m.season = '2026' and t.id in (m.home_team_id, m.away_team_id))) = 8, 'seed: 8 Currie Cup badges');
 
 -- The log matches the published 2026 table exactly
 select pg_temp.check(
@@ -59,6 +59,8 @@ reset role;
 select pg_temp.as_user('00000000-0000-0000-0000-00000000000a');
 select pg_temp.check((select count(*) from public.matches) = 28, 'member sees all matches');
 insert into public.entries (season, team_name) values ('2026', 'Daines XV');
+insert into public.pools (season, name) values ('2026', 'Test pool');
+select pg_temp.check((select count(*) from public.pool_members) = 1, 'starting a pool puts you in it');
 insert into public.pool_picks (entry_id, season, round, team_id, is_captain)
 select e.id, '2026', 1, t, t = '142073' from public.entries e,
   unnest(array['142073','142075','142067','142063']) t where e.team_name = 'Daines XV';
@@ -97,9 +99,18 @@ exception when insufficient_privilege then raise notice 'ok: members cannot edit
 end $$;
 reset role;
 
--- Andy: sees Justin's entry on the leaderboard, cannot touch his picks
+select join_code as code, id as poolid from public.pools where name = 'Test pool' \gset
+
+-- Andy: joins with the code, sees Justin on the pool leaderboard, cannot touch his picks
 select pg_temp.as_user('00000000-0000-0000-0000-00000000000b');
-select pg_temp.check((select count(*) from public.leaderboard where team_name = 'Daines XV') = 1, 'Andy sees Justin on the leaderboard');
+select pg_temp.check((select count(*) from public.pools) = 0, 'a pool is invisible until you join it');
+do $$ begin
+  perform public.join_pool('NOPE00');
+  raise exception 'FAILED: joined with a wrong code';
+exception when raise_exception then raise notice 'ok: a wrong code joins nothing';
+end $$;
+select public.join_pool(lower(:'code'));
+select pg_temp.check((select count(*) from public.pool_leaderboard where team_name = 'Daines XV') = 1, 'Andy sees Justin on the pool leaderboard');
 delete from public.pool_picks;
 update public.predictions set home_score = 0;
 reset role;
@@ -113,16 +124,28 @@ select pg_temp.check((select total_pts from public.prediction_scores where match
   'exact prediction on the Banker scores 20 x2 = 40');
 select pg_temp.check((select total_pts from public.prediction_scores where match_id = '2498544') = 6,
   'right result only scores 6');
-select pg_temp.check((select total_points from public.leaderboard where team_name = 'Daines XV') = 46,
+select pg_temp.check((select total_points from public.pool_leaderboard where team_name = 'Daines XV') = 46,
   'leaderboard totals predictions only');
 
 -- The ingest transform: a TheSportsDB round payload lands in core, idempotently
 insert into raw.feed_payloads (source, endpoint, params, payload) values ('thesportsdb', 'eventsround.php', '{"r":1}',
-  '{"events":[{"idEvent":"2498543","strSeason":"2026","intRound":"1","dateEvent":"2026-07-17","strTime":"14:00:00",
+  '{"events":[{"idEvent":"2498543","idLeague":"5069","strSeason":"2026","intRound":"1","dateEvent":"2026-07-17","strTime":"14:00:00",
     "idHomeTeam":"142072","idAwayTeam":"142073","intHomeScore":"24","intAwayScore":"27","strVenue":"Mbombela Stadium","strStatus":"FT"}]}');
 select pg_temp.check(core_load_events((select max(id) from raw.feed_payloads)) = 1, 'a changed score updates core');
 select pg_temp.check(core_load_events((select max(id) from raw.feed_payloads)) = 0, 'rerunning the same payload changes nothing');
 select pg_temp.check((select away_score from public.matches where id = '2498543') = 27, 'core carries the new score');
+
+-- Per-match lookups for any tournament: the event names its league and season
+insert into raw.feed_payloads (source, endpoint, params, payload) values ('thesportsdb', 'lookupevent.php', '{"id":"2550100"}',
+  '{"events":[{"idEvent":"2550100","idLeague":"4446","strSeason":"2026-2027","intRound":"1","strTimestamp":"2026-09-26T16:30:00",
+    "idHomeTeam":"135606","strHomeTeam":"Zebre","idAwayTeam":"999001","strAwayTeam":"The Newcomers","strAwayTeamBadge":"https://example.com/b.png",
+    "intHomeScore":null,"intAwayScore":null,"strStatus":"NS"},
+   {"idEvent":"1","idLeague":"4328","strSeason":"2026-2027","intRound":"1","strTimestamp":"2026-09-26T14:00:00",
+    "idHomeTeam":"133604","strHomeTeam":"Arsenal","idAwayTeam":"133602","strAwayTeam":"Chelsea","strStatus":"NS"}]}');
+select pg_temp.check(core_load_events((select max(id) from raw.feed_payloads)) = 1, 'a URC match loads; a league we don''t run is skipped');
+select pg_temp.check((select season from public.matches where id = '2550100') = 'urc-2026-27', 'the match lands in URC 2026-27');
+select pg_temp.check((select badge_url from public.teams where id = '999001') = 'https://example.com/b.png', 'a team the feed introduces is added, with its badge');
+select pg_temp.check(not exists (select 1 from public.teams where id = '133604'), 'no teams from other leagues');
 
 -- Supabase's invite inserts the user, then stamps invited_at in an update
 reset role;
@@ -132,16 +155,17 @@ update auth.users set invited_at = now() where id = '00000000-0000-0000-0000-000
 select pg_temp.check(exists (select 1 from public.members where user_id = '00000000-0000-0000-0000-00000000000c'),
   'an invite stamped after the insert still makes a member');
 
--- Chat: members talk, tags are read out, nobody posts as someone else
+-- Chat: pool mates talk, tags are read out, nobody posts as someone else
 select pg_temp.as_user('00000000-0000-0000-0000-00000000000a');
-insert into public.chat_messages (body) values
-  ('<@00000000-0000-0000-0000-00000000000b> looks like you''re taking this round. <@00000000-0000-0000-0000-0000000000ff>?');
-select pg_temp.check((select count(*) from public.chat_mentions) = 1, 'a tag for a member is recorded, a tag for a stranger is not');
+insert into public.chat_messages (pool_id, body) values (:poolid,
+  '<@00000000-0000-0000-0000-00000000000b> looks like you''re taking this round. <@00000000-0000-0000-0000-00000000000c> <@00000000-0000-0000-0000-0000000000ff>?');
+select pg_temp.check((select count(*) from public.chat_mentions) = 1, 'a tag counts only for someone in the pool');
 select pg_temp.check((select user_id::text from public.chat_mentions) = '00000000-0000-0000-0000-00000000000b', 'the tag points at Andy');
 select pg_temp.as_user('00000000-0000-0000-0000-00000000000b');
 select pg_temp.check((select count(*) from public.chat_messages) = 1, 'Andy reads the chat');
 do $$ begin
-  insert into public.chat_messages (author_id, body) values ('00000000-0000-0000-0000-00000000000a', 'I am Justin');
+  insert into public.chat_messages (pool_id, author_id, body)
+  select id, '00000000-0000-0000-0000-00000000000a', 'I am Justin' from public.pools;
   raise exception 'FAILED: posted as someone else';
 exception when insufficient_privilege then raise notice 'ok: nobody posts as someone else';
 end $$;
@@ -151,10 +175,13 @@ do $$ begin
   raise exception 'FAILED: edited a message';
 exception when insufficient_privilege then raise notice 'ok: messages cannot be edited';
 end $$;
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000c');
+select pg_temp.check((select count(*) from public.chat_messages) = 0, 'a member outside the pool reads none of its chat');
+select pg_temp.check((select unread from public.chat_unread) is null, 'and gets no unread count for it');
 select pg_temp.as_user('00000000-0000-0000-0000-0000000000ff');
 select pg_temp.check((select count(*) from public.chat_messages) = 0, 'a stranger reads no chat');
 do $$ begin
-  insert into public.chat_messages (body) values ('let me in');
+  insert into public.chat_messages (pool_id, body) values (1, 'let me in');
   raise exception 'FAILED: stranger posted';
 exception when insufficient_privilege then raise notice 'ok: a stranger cannot post';
 end $$;
@@ -162,7 +189,11 @@ reset role;
 select pg_temp.check((select count(*) from public.chat_messages) = 1, 'Andy could not delete Justin''s message');
 
 -- Kickoff reminders, on a live season: one match started, one in 30 minutes
-insert into public.seasons (id, name, is_replay) values ('2027', 'Currie Cup 2027', false);
+insert into public.seasons (id, name, is_replay, competition_id, feed_season) values ('2027', 'Currie Cup 2027', false, '5069', '2027');
+insert into public.pools (season, name, created_by) values ('2027', 'Live pool', '00000000-0000-0000-0000-00000000000a');
+insert into public.pool_members (pool_id, user_id)
+select id, u from public.pools, unnest(array['00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-00000000000c']::uuid[]) u
+where name = 'Live pool';
 insert into public.matches (id, season, round, kickoff_at, home_team_id, away_team_id, status, source) values
   ('t-started', '2027', 1, now() - interval '1 minute', '142072', '142073', 'SCHEDULED', 'test'),
   ('t-soon',    '2027', 1, now() + interval '30 minutes', '142075', '142070', 'SCHEDULED', 'test'),

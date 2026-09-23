@@ -8,26 +8,23 @@ import { supabase } from "@/lib/supabase";
 const TABS = [
   ["/", "Home"],
   ["/predict/", "Predict"],
+  ["/leaderboard/", "Leaderboard"],
   ["/chat/", "Chat"],
+  ["/pools/", "Pools"],
   ["/fixtures/", "Fixtures"],
   ["/standings/", "Log"],
-  ["/leaderboard/", "Leaderboard"],
 ];
 
 interface Unread { count: number; tagged: boolean }
 
-/** Messages from others since this member last opened the chat, and whether any tag them. */
+/** Messages from others across your pools since you last read each, and whether any tag you. */
 function useUnread(uid: string | null): Unread {
   const [u, setU] = useState<Unread>({ count: 0, tagged: false });
   const refresh = useCallback(async () => {
     if (!uid) return;
-    const { data: r } = await supabase.from("chat_reads").select("last_read_id").eq("user_id", uid).maybeSingle();
-    const since = r?.last_read_id ?? 0;
-    const [msgs, tags] = await Promise.all([
-      supabase.from("chat_messages").select("id", { count: "exact", head: true }).gt("id", since).neq("author_id", uid),
-      supabase.from("chat_mentions").select("message_id", { count: "exact", head: true }).gt("message_id", since).eq("user_id", uid),
-    ]);
-    setU({ count: msgs.count ?? 0, tagged: (tags.count ?? 0) > 0 });
+    const { data } = await supabase.from("chat_unread").select("unread, tagged");
+    const rows = (data ?? []) as { unread: number; tagged: number }[];
+    setU({ count: rows.reduce((n, r) => n + r.unread, 0), tagged: rows.some((r) => r.tagged > 0) });
   }, [uid]);
 
   useEffect(() => {

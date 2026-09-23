@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
-import { useLeague } from "@/components/league";
+import { NeedsPool, useLeague } from "@/components/league";
 import { encodeMentions, splitMentions, typingTag } from "@/lib/mentions";
 import { supabase } from "@/lib/supabase";
 import type { ChatMessage, Member } from "@/lib/types";
@@ -9,7 +9,14 @@ import type { ChatMessage, Member } from "@/lib/types";
 const PAGE = 200;
 
 export default function ChatPage() {
-  const { me, members } = useLeague();
+  return <NeedsPool><Chat /></NeedsPool>;
+}
+
+function Chat() {
+  const { me, members: everyone, pool } = useLeague();
+  const poolId = pool!.id;
+  const [inPool, setInPool] = useState<Set<string>>(new Set());
+  const members = useMemo(() => everyone.filter((m) => inPool.has(m.user_id)), [everyone, inPool]);
   const [msgs, setMsgs] = useState<ChatMessage[]>([]);
   const [text, setText] = useState("");
   const [tag, setTag] = useState<string | null>(null);
@@ -17,34 +24,39 @@ export default function ChatPage() {
   const [err, setErr] = useState<string | null>(null);
   const box = useRef<HTMLTextAreaElement>(null);
   const end = useRef<HTMLDivElement>(null);
-  const people = useMemo(() => new Map(members.map((m) => [m.user_id, m])), [members]);
+  const people = useMemo(() => new Map(everyone.map((m) => [m.user_id, m])), [everyone]);
+
+  useEffect(() => {
+    supabase.from("pool_members").select("user_id").eq("pool_id", poolId)
+      .then(({ data }) => setInPool(new Set((data ?? []).map((r: { user_id: string }) => r.user_id))));
+  }, [poolId]);
 
   const load = useCallback(async () => {
-    const { data } = await supabase.from("chat_messages").select("*").order("id", { ascending: false }).limit(PAGE);
+    const { data } = await supabase.from("chat_messages").select("*").eq("pool_id", poolId).order("id", { ascending: false }).limit(PAGE);
     setMsgs(((data ?? []) as ChatMessage[]).reverse());
-  }, []);
+  }, [poolId]);
 
   // Live: new and deleted messages arrive as they happen.
   useEffect(() => {
     load();
-    const ch = supabase.channel("chat")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "chat_messages" },
+    const ch = supabase.channel(`chat:${poolId}`)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "chat_messages", filter: `pool_id=eq.${poolId}` },
         (p) => setMsgs((xs) => xs.some((x) => x.id === (p.new as ChatMessage).id) ? xs : [...xs, p.new as ChatMessage]))
       .on("postgres_changes", { event: "DELETE", schema: "public", table: "chat_messages" },
         (p) => setMsgs((xs) => xs.filter((x) => x.id !== (p.old as { id: number }).id)))
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [load]);
+  }, [load, poolId]);
 
   // Scroll to the newest and mark it read.
   const lastId = msgs.length ? msgs[msgs.length - 1].id : 0;
   useEffect(() => {
     end.current?.scrollIntoView({ block: "end" });
     if (lastId) {
-      supabase.from("chat_reads").upsert({ user_id: me.user_id, last_read_id: lastId }).then(() =>
+      supabase.from("chat_reads").upsert({ user_id: me.user_id, pool_id: poolId, last_read_id: lastId }).then(() =>
         window.dispatchEvent(new Event("chat-read")));
     }
-  }, [lastId, me.user_id]);
+  }, [lastId, me.user_id, poolId]);
 
   const matches = tag === null ? [] :
     members.filter((m) => m.user_id !== me.user_id && m.display_name.toLowerCase().startsWith(tag.toLowerCase())).slice(0, 5);
@@ -69,7 +81,7 @@ export default function ChatPage() {
     const body = encodeMentions(text.trim(), members);
     if (!body) return;
     setErr(null);
-    const { data, error } = await supabase.from("chat_messages").insert({ body }).select().single();
+    const { data, error } = await supabase.from("chat_messages").insert({ body, pool_id: poolId }).select().single();
     if (error) { setErr(error.message); return; }
     setText(""); setTag(null);
     setMsgs((xs) => xs.some((x) => x.id === data.id) ? xs : [...xs, data as ChatMessage]);
@@ -92,8 +104,8 @@ export default function ChatPage() {
 
   return (
     <div className="card chat">
-      <h2>League chat</h2>
-      <p className="sub">Everyone in the league sees this. Type @ to tag someone.</p>
+      <h2>{pool!.name} chat</h2>
+      <p className="sub">Only people in this pool see it. Type @ to tag someone.</p>
       <div className="chatlog">
         {msgs.length === 0 && <p className="muted small">No messages yet. Start the banter.</p>}
         {msgs.map((m, i) => {

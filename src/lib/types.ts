@@ -1,4 +1,6 @@
-export interface Season { id: string; name: string; is_replay: boolean }
+export interface Competition { id: string; name: string; short_name: string }
+export interface Season { id: string; name: string; is_replay: boolean; competition_id: string; starts_on: string | null }
+export interface Pool { id: number; season: string; name: string; join_code: string; created_by: string }
 export interface Team {
   id: string; display_name: string; short_name: string; stadium: string | null;
   colour: string | null; colour_ink: string | null; badge_url: string | null;
@@ -19,6 +21,6 @@ export interface StandingRow {
   log_points: number; points_exact: boolean; position: number;
 }
 export interface LeaderRow {
-  entry_id: number; team_name: string; manager: string;
+  pool_id: number; user_id: string; manager: string; entry_id: number | null; team_name: string | null;
   total_points: number; right_results: number; exact_scores: number; rounds_scored: number;
 }

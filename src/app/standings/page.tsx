@@ -8,7 +8,7 @@ import { supabase } from "@/lib/supabase";
 import type { StandingRow } from "@/lib/types";
 
 export default function StandingsPage() {
-  const { season, teams } = useLeague();
+  const { season, teams, competitions } = useLeague();
   const [log, setLog] = useState<StandingRow[]>([]);
   useEffect(() => {
     supabase.from("standings").select("*").eq("season", season.id).order("position")
@@ -19,11 +19,11 @@ export default function StandingsPage() {
   return (
     <>
       <div className="card scroll-x">
-        <h2>Currie Cup log</h2>
+        <h2>{competitions.get(season.competition_id)?.short_name ?? "The"} log</h2>
         <p className="sub">{season.name}. Built live from the results in the database.</p>
         <table>
           <thead><tr>
-            <th>#</th><th>Union</th><th className="num">P</th><th className="num">W</th><th className="num">D</th>
+            <th>#</th><th>Team</th><th className="num">P</th><th className="num">W</th><th className="num">D</th>
             <th className="num">L</th><th className="num hide-sm">PF</th><th className="num hide-sm">PA</th>
             <th className="num">Diff</th><th className="num">Pts{exact ? "" : "*"}</th>
           </tr></thead>

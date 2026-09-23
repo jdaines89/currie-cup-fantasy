@@ -1,0 +1,93 @@
+"use client";
+
+import { useEffect, useState, type FormEvent } from "react";
+import { useLeague } from "@/components/league";
+import { supabase } from "@/lib/supabase";
+
+interface Mate { pool_id: number; user_id: string }
+
+export default function PoolsPage() {
+  const { season, pools, pool, setPool, reloadPools, members, me } = useLeague();
+  const [mates, setMates] = useState<Mate[]>([]);
+  const [name, setName] = useState("");
+  const [code, setCode] = useState("");
+  const [msg, setMsg] = useState<string | null>(null);
+  const [copied, setCopied] = useState<number | null>(null);
+  const names = new Map(members.map((m) => [m.user_id, m.display_name]));
+
+  useEffect(() => {
+    if (!pools.length) { setMates([]); return; }
+    supabase.from("pool_members").select("pool_id, user_id").in("pool_id", pools.map((p) => p.id))
+      .then(({ data }) => setMates((data ?? []) as Mate[]));
+  }, [pools]);
+
+  async function create(e: FormEvent) {
+    e.preventDefault(); setMsg(null);
+    const { data, error } = await supabase.from("pools").insert({ season: season.id, name: name.trim(), created_by: me.user_id }).select().single();
+    if (error) { setMsg(error.message); return; }
+    setName(""); await reloadPools(); setPool(data.id);
+  }
+
+  async function join(e: FormEvent) {
+    e.preventDefault(); setMsg(null);
+    const { data, error } = await supabase.rpc("join_pool", { p_code: code });
+    if (error) { setMsg(error.message); return; }
+    setCode(""); await reloadPools(); setPool(data as number);
+  }
+
+  async function share(id: number, joinCode: string, poolName: string) {
+    const text = `Join my ${season.name} pool "${poolName}" on Currie Cup Fantasy with code ${joinCode}: ${window.location.origin}${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/pools/`;
+    try {
+      if (navigator.share) await navigator.share({ text });
+      else await navigator.clipboard.writeText(text);
+      setCopied(id);
+    } catch { /* dismissed */ }
+  }
+
+  return (
+    <>
+      <div className="card">
+        <h2>Your pools for {season.name}</h2>
+        <p className="sub">A pool is a leaderboard and a chat. Your calls for {season.name} count in every pool you&apos;re in.</p>
+        {pools.length === 0 && <p className="muted">None yet. Start one below, or join with a code from a mate.</p>}
+        {pools.map((p) => {
+          const inIt = mates.filter((m) => m.pool_id === p.id);
+          return (
+            <div key={p.id} className={`poolrow${p.id === pool?.id ? " on" : ""}`}>
+              <div className="grow">
+                <button type="button" className="linkish" onClick={() => setPool(p.id)}><strong>{p.name}</strong></button>
+                <div className="small muted">{inIt.map((m) => m.user_id === me.user_id ? "You" : names.get(m.user_id) ?? "?").join(", ")}</div>
+              </div>
+              <div className="code">
+                <span className="small muted">Code</span>
+                <strong>{p.join_code}</strong>
+              </div>
+              <button type="button" className="ghost" onClick={() => share(p.id, p.join_code, p.name)}>{copied === p.id ? "Copied" : "Invite"}</button>
+            </div>
+          );
+        })}
+      </div>
+      <div className="grid2">
+        <form className="card" onSubmit={create}>
+          <h2>Start a pool</h2>
+          <p className="sub">You get a code to send to your mates.</p>
+          <div className="row">
+            <input required maxLength={40} placeholder="Pool name" value={name} onChange={(e) => setName(e.target.value)} />
+            <button type="submit">Start</button>
+          </div>
+        </form>
+        <form className="card" onSubmit={join}>
+          <h2>Join a pool</h2>
+          <p className="sub">Type the six-character code you were sent.</p>
+          <div className="row">
+            <input required maxLength={6} placeholder="e.g. 7K2Q9D" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())}
+              style={{ textTransform: "uppercase", letterSpacing: ".12em" }} />
+            <button type="submit">Join</button>
+          </div>
+        </form>
+      </div>
+      {msg && <div className="notice">{msg}</div>}
+      <p className="small muted">Only people you&apos;ve invited to the app can join. Invite them first from Supabase, then send the code.</p>
+    </>
+  );
+}
