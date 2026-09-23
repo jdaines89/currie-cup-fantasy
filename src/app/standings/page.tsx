@@ -1,4 +1,5 @@
 import { buildStandings, listTeams, latestCompletedRound } from "@/lib/queries";
+import { Team, stripe } from "@/components/team";
 import { signed } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -26,9 +27,9 @@ export default function StandingsPage() {
           </thead>
           <tbody>
             {log.map((row, i) => (
-              <tr key={row.team_id}>
+              <tr key={row.team_id} style={stripe(row.team_id)}>
                 <td className="muted">{i + 1}</td>
-                <td><strong>{teams.get(row.team_id)?.display_name}</strong></td>
+                <td><Team team={teams.get(row.team_id)} /></td>
                 <td className="num">{row.played}</td>
                 <td className="num">{row.won}</td>
                 <td className="num">{row.drawn}</td>

@@ -175,3 +175,11 @@ fixtures come from.
 | `npm run score` | recompute every entry |
 
 Next.js 15, TypeScript, SQLite via better-sqlite3. Plain SQL, no ORM.
+
+## Team colours and logos
+
+`src/lib/team-brand.ts` holds each union's jersey colour and its official badge
+(hotlinked from TheSportsDB, never stored in the repo). The app shows the badges
+by default; set `SHOW_OFFICIAL_LOGOS=0` to use jersey-colour discs instead. The
+badges are the unions' trademarks, so keep them to internal use until they are
+licensed. The public demo in `docs/` only ever shows the coloured discs.

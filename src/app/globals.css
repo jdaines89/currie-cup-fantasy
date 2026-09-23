@@ -28,13 +28,16 @@ a:hover { text-decoration: underline; }
 .shell { max-width: 1040px; margin: 0 auto; padding: 0 16px 64px; }
 
 header.top {
-  border-bottom: 1px solid var(--line);
-  background: linear-gradient(180deg, #16241f, #0d1412);
+  border-bottom: 3px solid var(--gold);
+  background:
+    linear-gradient(90deg, #2b4d9c 0 12.5%, #1d6b3c 0 25%, #f36f21 0 37.5%, #d2232a 0 50%,
+      #1f6fb8 0 62.5%, #b5121b 0 75%, #161616 0 87.5%, #0b3a82 0) top / 100% 5px no-repeat,
+    radial-gradient(120% 140% at 0% 0%, #0f5a3a 0%, #0d1412 70%);
   margin-bottom: 24px;
 }
 header.top .shell { padding-top: 18px; padding-bottom: 0; }
-.brand { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
-.brand span { color: var(--accent); }
+.brand { font-size: 22px; font-weight: 800; letter-spacing: -0.01em; }
+.brand span { color: var(--gold); }
 .tagline { color: var(--muted); font-size: 13px; margin-top: 2px; }
 
 nav.tabs { display: flex; gap: 4px; margin-top: 16px; flex-wrap: wrap; }
@@ -49,6 +52,7 @@ nav.tabs a:hover { color: var(--text); text-decoration: none; background: var(--
   background: var(--panel); border: 1px solid var(--line);
   border-radius: var(--radius); padding: 18px; margin-bottom: 18px;
 }
+.card { border-top: 3px solid var(--accent-dim); }
 .card h2 { margin: 0 0 4px; font-size: 16px; letter-spacing: -0.01em; }
 .card .sub { color: var(--muted); font-size: 13px; margin: 0 0 14px; }
 
@@ -123,3 +127,13 @@ input[type="number"] { width: 76px; }
 .cap .over { color: var(--danger); }
 
 footer.foot { color: var(--muted); font-size: 12px; border-top: 1px solid var(--line); padding-top: 16px; }
+
+/* Team crests: official badge image or a jersey-colour disc with initials. */
+.crest { display: inline-block; flex: 0 0 auto; object-fit: contain; vertical-align: middle; }
+.crest.disc {
+  display: inline-grid; place-items: center; border-radius: 50%;
+  font-weight: 800; letter-spacing: -0.02em; line-height: 1;
+  box-shadow: 0 0 0 1.5px rgba(255,255,255,.18);
+}
+.team { display: inline-flex; align-items: center; gap: 8px; vertical-align: middle; }
+.team.right { justify-content: flex-end; }

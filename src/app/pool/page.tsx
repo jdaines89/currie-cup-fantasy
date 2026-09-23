@@ -1,4 +1,5 @@
 import { savePoolPicks } from "@/lib/actions";
+import { Team, stripe } from "@/components/team";
 import { resolveEntry } from "@/lib/entry";
 import { kickoff, pts } from "@/lib/format";
 import {
@@ -74,13 +75,13 @@ export default async function PoolPage({ searchParams }: {
                   {played && <> &middot; <span className="score">{m.home_score}&ndash;{m.away_score}</span></>}
                 </div>
                 {[home, away].map((t) => (
-                  <label key={t.id} className={`pickrow ${picked.has(t.id) ? "on" : ""}`}>
+                  <label key={t.id} className={`pickrow ${picked.has(t.id) ? "on" : ""}`} style={stripe(t.id)}>
                     <input
                       type="checkbox" name="team" value={t.id}
                       defaultChecked={picked.has(t.id)} disabled={locked}
                     />
                     <span className="grow">
-                      <span className="name">{t.display_name}</span>
+                      <span className="name"><Team team={t} /></span>
                       <span className="muted small"> &middot; {t.stadium}</span>
                     </span>
                     <span className="small muted">captain</span>
