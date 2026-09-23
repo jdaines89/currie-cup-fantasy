@@ -127,6 +127,8 @@ select pg_temp.check((select total_pts from public.prediction_scores where match
   'right result only scores 6');
 select pg_temp.check((select total_points from public.pool_leaderboard where team_name = 'Daines XV') = 46,
   'leaderboard totals predictions only');
+select pg_temp.check((select (res_pts, mar_pts, cls_pts, exa_pts, banker_pts) = (12::bigint, 5::bigint, 4::bigint, 5::bigint, 20::bigint)
+  from public.pool_leaderboard where team_name = 'Daines XV'), 'leaderboard breakdown adds up: 12 + 5 + 4 + 5 + 20 Banker = 46');
 
 -- The ingest transform: a TheSportsDB round payload lands in core, idempotently
 insert into raw.feed_payloads (source, endpoint, params, payload) values ('thesportsdb', 'eventsround.php', '{"r":1}',

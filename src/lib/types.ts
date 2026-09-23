@@ -23,4 +23,5 @@ export interface StandingRow {
 export interface LeaderRow {
   pool_id: number; user_id: string; manager: string; entry_id: number | null; team_name: string | null;
   total_points: number; right_results: number; exact_scores: number; rounds_scored: number;
+  res_pts: number; mar_pts: number; cls_pts: number; exa_pts: number; banker_pts: number; matches_scored: number;
 }
