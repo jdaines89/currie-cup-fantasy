@@ -322,3 +322,10 @@ details.mates li .pts { text-align: right; color: var(--accent); font-weight: 70
 .h2h .pts { color: var(--accent); font-weight: 700; }
 .h2h .up { color: var(--accent); }
 .h2h .down { color: var(--danger); }
+
+/* No spinner arrows in score boxes */
+input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
+.mactions { display: flex; gap: 6px; align-items: center; }
+.bank.locked { cursor: default; color: var(--accent); border-color: var(--accent-dim); }
+.roundactions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }

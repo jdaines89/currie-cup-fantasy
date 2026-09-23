@@ -49,6 +49,7 @@ function Predict() {
   const [draft, setDraft] = useState<Record<string, [string, string]>>({});
   const [scores, setScores] = useState<Map<string, PredScore>>(new Map());
   const [mates, setMates] = useState<MateCall[]>([]);
+  const [myLocks, setMyLocks] = useState<Set<string>>(new Set());
   const [msg, setMsg] = useState<string | null>(null);
 
   useEffect(() => { if (round === null && rounds.length) setRound(firstOpenRound(rounds, isLocked)); }, [round, rounds, isLocked]);
@@ -57,14 +58,16 @@ function Predict() {
   const load = useCallback(async () => {
     if (round === null) return;
     const ids = matches.filter((m) => m.round === round).map((m) => m.id);
-    const [p, s, theirs, theirScores, entries] = await Promise.all([
+    const [p, s, theirs, theirScores, entries, ml] = await Promise.all([
       supabase.from("predictions").select("*").eq("entry_id", entry!.id).in("match_id", ids),
       supabase.from("prediction_scores").select("match_id, total_pts, is_banker, result_pts, margin_pts, near_pts, exact_pts").eq("entry_id", entry!.id).in("match_id", ids),
       // Only calls that are locked come back: the database hides the rest.
       supabase.from("predictions").select("entry_id, match_id, home_score, away_score, is_banker").neq("entry_id", entry!.id).in("match_id", ids),
       supabase.from("prediction_scores").select("entry_id, match_id, total_pts").neq("entry_id", entry!.id).in("match_id", ids),
       supabase.from("entries").select("id, user_id, team_name").eq("season", season.id),
+      supabase.from("match_locks").select("match_id").eq("entry_id", entry!.id).in("match_id", ids),
     ]);
+    setMyLocks(new Set((ml.data ?? []).map((r: { match_id: string }) => r.match_id)));
     const owner = new Map(((entries.data ?? []) as { id: number; user_id: string }[]).map((e) => [e.id, e.user_id]));
     const pts = new Map(((theirScores.data ?? []) as { entry_id: number; match_id: string; total_pts: number }[])
       .map((x) => [`${x.entry_id}:${x.match_id}`, x.total_pts]));
@@ -108,6 +111,24 @@ function Predict() {
     if (error) { setRemind(!on); setMsg(error.message); }
   }
 
+  // Live seasons: lock a call before kickoff to see mates who've locked theirs.
+  async function lockMatches(matchIds: string[]) {
+    if (!matchIds.length) return;
+    setMsg(null);
+    const { error } = await supabase.from("match_locks").insert(matchIds.map((id) => ({ entry_id: entry!.id, match_id: id })));
+    if (error) setMsg(error.message);
+    await load();
+  }
+
+  async function clearRound() {
+    const ids = ms.filter((m) => preds.has(m.id) && !(done || matchStarted(m) || myLocks.has(m.id))).map((m) => m.id);
+    if (!ids.length || !window.confirm(`Clear your ${ids.length} unlocked call${ids.length === 1 ? "" : "s"} for round ${round}?`)) return;
+    setMsg(null);
+    const { error } = await supabase.from("predictions").delete().eq("entry_id", entry!.id).in("match_id", ids);
+    if (error) setMsg(error.message);
+    await load();
+  }
+
   async function lockIn() {
     const { error } = await lockRound(entry!.id, season.id, round!);
     if (error) setMsg(error.message);
@@ -134,14 +155,20 @@ function Predict() {
           const h = teams.get(m.home_team_id)!, a = teams.get(m.away_team_id)!;
           const d = draft[m.id] ?? ["", ""];
           const p = preds.get(m.id);
-          const shut = done || matchStarted(m);
-          const bankerShut = ms.some((x) => preds.get(x.id)?.is_banker && matchStarted(x));
+          const started = matchStarted(m);
+          const shut = done || started || myLocks.has(m.id);
+          const bankerShut = ms.some((x) => preds.get(x.id)?.is_banker && (matchStarted(x) || myLocks.has(x.id)));
           return (
             <div key={m.id} className={p?.is_banker ? "match banker" : "match"}>
               <div className="mhead">
                 <span>{kickoff(m.kickoff_at)} · {m.venue}</span>
-                {p?.is_banker ? <span className="bank on">Banker ×2</span>
-                  : !shut && !bankerShut && p ? <button type="button" className="bank" onClick={() => back(m.id)}>Make Banker</button> : null}
+                <span className="mactions">
+                  {p?.is_banker ? <span className="bank on">Banker ×2</span>
+                    : !shut && !bankerShut && p ? <button type="button" className="bank" onClick={() => back(m.id)}>Make Banker</button> : null}
+                  {!season.is_replay && !started && (myLocks.has(m.id)
+                    ? <span className="bank locked">🔒 Locked</span>
+                    : p && <button type="button" className="bank" onClick={() => lockMatches([m.id])}>Lock</button>)}
+                </span>
               </div>
               <div className="pred">
                 <span className="pteam"><span className="ha home">Home</span><Crest team={h} /><strong>{h.display_name}</strong></span>
@@ -190,6 +217,24 @@ function Predict() {
             <input type="checkbox" checked={remind} onChange={(e) => toggleReminders(e.target.checked)} />
             Email me an hour before kickoff if I haven&apos;t called a score
           </label>
+        )}
+        {!done && (
+          <div className="roundactions">
+            {!season.is_replay && (() => {
+              const open = ms.filter((m) => preds.has(m.id) && !matchStarted(m) && !myLocks.has(m.id)).map((m) => m.id);
+              return open.length > 0 && (
+                <button type="button" onClick={() => {
+                  if (window.confirm(`Lock ${open.length} call${open.length === 1 ? "" : "s"}? You can't change them after, but you'll see the calls of mates who've locked the same games.`)) lockMatches(open);
+                }}>Lock {open.length === ms.length ? "all" : open.length} call{open.length === 1 ? "" : "s"}</button>
+              );
+            })()}
+            {ms.some((m) => preds.has(m.id) && !matchStarted(m) && !myLocks.has(m.id)) && (
+              <button type="button" className="ghost" onClick={clearRound}>Clear unlocked calls</button>
+            )}
+          </div>
+        )}
+        {!season.is_replay && !done && (
+          <p className="small muted">Every call locks at kickoff anyway. Lock one earlier and you&apos;ll see the calls of mates who&apos;ve locked that game too. A lock can&apos;t be undone.</p>
         )}
         {!done && season.is_replay && (
           <>

@@ -231,6 +231,31 @@ select pg_temp.as_user('00000000-0000-0000-0000-00000000000a');
 select pg_temp.check((select count(*) from public.predictions) = 3, 'you always see your own calls');
 reset role;
 
+-- Early locks: see a mate's call before kickoff only once you've both locked
+reset role;
+update public.matches set kickoff_at = now() + interval '2 hours' where id = 't-later';
+insert into public.entries (user_id, season, team_name) values ('00000000-0000-0000-0000-00000000000b', '2027', 'Reeves XV');
+insert into public.predictions (entry_id, match_id, home_score, away_score)
+select id, 't-later', 30, 10 from public.entries where season = '2027';
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000a');
+insert into public.match_locks (entry_id, match_id) select id, 't-later' from public.entries where season = '2027' and user_id = auth.uid();
+do $$ begin
+  update public.predictions set home_score = 1 where match_id = 't-later' and entry_id in (select id from public.entries where user_id = auth.uid());
+  raise exception 'FAILED: changed a locked call';
+exception when raise_exception then raise notice 'ok: a locked call cannot change';
+end $$;
+select pg_temp.check((select count(*) from public.predictions where match_id = 't-later') = 1, 'locking alone shows nobody else''s call');
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000b');
+select pg_temp.check((select count(*) from public.predictions where match_id = 't-later') = 1, 'an unlocked mate cannot see a locked call');
+insert into public.match_locks (entry_id, match_id) select id, 't-later' from public.entries where season = '2027' and user_id = auth.uid();
+select pg_temp.check((select count(*) from public.predictions where match_id = 't-later') = 2, 'both locked: both calls show');
+do $$ begin
+  delete from public.match_locks;
+  raise exception 'FAILED: undid a lock';
+exception when insufficient_privilege then raise notice 'ok: a match lock cannot be undone';
+end $$;
+reset role;
+
 -- Bonus points from Wikipedia's log: our losing bonus, their try bonus
 insert into public.matches (id, season, round, kickoff_at, home_team_id, away_team_id, home_score, away_score, status, source)
 values ('t-played', '2027', 1, now() - interval '3 hours', '142072', '142073', 31, 24, 'FT', 'test');
