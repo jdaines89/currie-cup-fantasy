@@ -22,6 +22,7 @@ function Chat() {
   const [tag, setTag] = useState<string | null>(null);
   const [pick, setPick] = useState(0);
   const [err, setErr] = useState<string | null>(null);
+  const [picked, setPicked] = useState<number | null>(null);
   const box = useRef<HTMLTextAreaElement>(null);
   const end = useRef<HTMLDivElement>(null);
   const people = useMemo(() => new Map(everyone.map((m) => [m.user_id, m])), [everyone]);
@@ -100,12 +101,13 @@ function Chat() {
   async function remove(id: number) {
     const { error } = await supabase.from("chat_messages").delete().eq("id", id);
     if (!error) setMsgs((xs) => xs.filter((x) => x.id !== id));
+    setPicked(null);
   }
 
   return (
     <div className="card chat">
       <h2>{pool!.name} chat</h2>
-      <p className="sub">Only people in this pool see it. Type @ to tag someone.</p>
+      <p className="sub">Only people in this pool see it. Type @ to tag someone, and tap one of your messages to delete it.</p>
       <div className="chatlog">
         {msgs.length === 0 && <p className="muted small">No messages yet. Start the banter.</p>}
         {msgs.map((m, i) => {
@@ -117,16 +119,25 @@ function Chat() {
             && new Date(m.created_at).getTime() - new Date(msgs[i - 1].created_at).getTime() < 5 * 60_000;
           return (
             <div key={m.id} className={`msg${mine ? " mine" : ""}${tagsMe ? " tagged" : ""}${grouped ? " grouped" : ""}`}>
-              {!grouped && (
-                <div className="meta">
-                  <strong>{mine ? "You" : who?.display_name ?? "Former member"}</strong>
-                  <span>{when(m.created_at)}</span>
+              {!grouped && !mine && <span className="avatar" aria-hidden>{initials(who?.display_name)}</span>}
+              <div className="msgbody">
+                {!grouped && (
+                  <div className="meta">
+                    {!mine && <strong>{who?.display_name ?? "Former member"}</strong>}
+                    <span>{when(m.created_at)}</span>
+                  </div>
+                )}
+                <div className={`bubble${picked === m.id ? " picked" : ""}`}
+                  onClick={mine ? () => setPicked(picked === m.id ? null : m.id) : undefined}>
+                  {parts.map((p, j) => "text" in p ? <span key={j}>{p.text}</span>
+                    : <span key={j} className={`tag${p.userId === me.user_id ? " me" : ""}`}>@{people.get(p.userId)?.display_name ?? "someone"}</span>)}
                 </div>
-              )}
-              <div className="bubble">
-                {parts.map((p, j) => "text" in p ? <span key={j}>{p.text}</span>
-                  : <span key={j} className={`tag${p.userId === me.user_id ? " me" : ""}`}>@{people.get(p.userId)?.display_name ?? "someone"}</span>)}
-                {mine && <button type="button" className="del" aria-label="Delete message" onClick={() => remove(m.id)}>×</button>}
+                {picked === m.id && (
+                  <div className="msgactions">
+                    <button type="button" className="ghost" onClick={() => setPicked(null)}>Cancel</button>
+                    <button type="button" className="danger" onClick={() => remove(m.id)}>Delete message</button>
+                  </div>
+                )}
               </div>
             </div>
           );
@@ -149,6 +160,10 @@ function Chat() {
       {err && <p className="small" style={{ color: "var(--danger)" }}>{err}</p>}
     </div>
   );
+}
+
+function initials(name?: string): string {
+  return (name ?? "?").split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
 }
 
 function when(iso: string): string {

@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useState, type FormEvent, type ReactNode } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import type { Competition, Entry, Match, Member, Pool, Season, Team } from "@/lib/types";
 
@@ -120,9 +121,14 @@ export function LeagueProvider({ children }: { children: ReactNode }) {
   );
 }
 
-/** Which tournament and which pool you're looking at. */
+// Only these screens show one pool's view; everywhere else the pool picker is noise.
+const POOL_SCREENS = ["/leaderboard", "/chat"];
+
+/** Which tournament you're looking at, and on pool screens which pool. */
 function Switcher() {
   const { seasons, season, setSeason, pools, pool, setPool } = useLeague();
+  const path = usePathname() ?? "";
+  const showPool = POOL_SCREENS.some((p) => path.startsWith(p));
   return (
     <div className="switcher">
       <label>
@@ -131,14 +137,14 @@ function Switcher() {
           {seasons.map((s) => <option key={s.id} value={s.id}>{s.name}{s.is_replay ? " (replay)" : ""}</option>)}
         </select>
       </label>
-      <label>
+      {showPool && <label>
         <span>Pool</span>
         {pools.length ? (
           <select value={pool?.id ?? ""} onChange={(e) => setPool(Number(e.target.value))}>
             {pools.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
         ) : <Link href="/pools/" className="nopool">Start or join a pool</Link>}
-      </label>
+      </label>}
     </div>
   );
 }

@@ -68,6 +68,8 @@ function Predict() {
   if (round === null) return null;
   const done = isLocked(round);
   const total = [...scores.values()].reduce((a, b) => a + b.total_pts, 0);
+  const filled = ms.filter((m) => preds.has(m.id)).length;
+  const hasBanker = ms.some((m) => preds.get(m.id)?.is_banker);
 
   async function save(matchId: string, h: string, a: string) {
     setDraft((d) => ({ ...d, [matchId]: [h, a] }));
@@ -98,18 +100,22 @@ function Predict() {
     await reloadLocks(); await load();
   }
 
-  const filled = ms.filter((m) => preds.has(m.id)).length;
-  const hasBanker = ms.some((m) => preds.get(m.id)?.is_banker);
 
   return (
     <>
-      <RoundPicker rounds={rounds} round={round} onPick={setRound} locked={locked} />
+      <RoundPicker rounds={rounds} round={round} onPick={setRound} locked={locked} matches={matches} />
       <div className="card">
         <h2>Round {round} {done && <span className="badge win">locked</span>}</h2>
         <p className="sub">
           {done ? <>You scored <strong>{total}</strong> this round.</>
-            : <>Call each scoreline. 6 for the right result, 5 more for the exact margin, 2 for each side within 3 points, and 5 more for the exact score. Back one match as your <strong>Banker</strong> and it counts double.</>}
+            : <>{filled} of {ms.length} called{hasBanker ? ", Banker picked" : ", no Banker yet"}.</>}
         </p>
+        {!done && (
+          <details className="rules">
+            <summary>How scoring works</summary>
+            6 for the right result, 5 more for the exact margin, 2 for each side within 3 points, and 5 more for the exact score. Back one match as your <strong>Banker</strong> and it counts double.
+          </details>
+        )}
         {ms.map((m) => {
           const h = teams.get(m.home_team_id)!, a = teams.get(m.away_team_id)!;
           const d = draft[m.id] ?? ["", ""];
