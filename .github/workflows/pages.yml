@@ -24,7 +24,8 @@ jobs:
     env:
       NEXT_PUBLIC_SUPABASE_URL: https://lgqhimcthptxglqppnuf.supabase.co
       NEXT_PUBLIC_SUPABASE_KEY: sb_publishable_iUIXd23NeI3DTP8YIvOeHQ_1JHtj3sJ
-      NEXT_PUBLIC_BASE_PATH: /currie-cup-fantasy
+      # The site lives at /<repo name>/, so it follows a rename.
+      NEXT_PUBLIC_BASE_PATH: /${{ github.event.repository.name }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
