@@ -115,4 +115,12 @@ select pg_temp.check(core_load_events((select max(id) from raw.feed_payloads)) =
 select pg_temp.check(core_load_events((select max(id) from raw.feed_payloads)) = 0, 'rerunning the same payload changes nothing');
 select pg_temp.check((select away_score from public.matches where id = '2498543') = 27, 'core carries the new score');
 
+-- Supabase's invite inserts the user, then stamps invited_at in an update
+reset role;
+insert into auth.users (id, email, invited_at, raw_user_meta_data) values
+  ('00000000-0000-0000-0000-00000000000c', 'christo@example.com', null, '{}');
+update auth.users set invited_at = now() where id = '00000000-0000-0000-0000-00000000000c';
+select pg_temp.check(exists (select 1 from public.members where user_id = '00000000-0000-0000-0000-00000000000c'),
+  'an invite stamped after the insert still makes a member');
+
 \echo ALL CHECKS PASSED

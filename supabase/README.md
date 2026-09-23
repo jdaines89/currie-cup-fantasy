@@ -35,7 +35,7 @@ no rugby it makes no calls at all. No server and no secrets. First live run,
 
 **Tests.** `sh supabase/tests/run.sh` rebuilds a scratch database on a local
 Postgres 16 from the migrations and seed, with a small stand-in for Supabase's
-auth schema, and runs 23 behaviour checks: access for strangers, self-registered accounts, members and
+auth schema, and runs 24 behaviour checks: access for strangers, self-registered accounts, members and
 other members, the pick rules, scoring against the app's rules, the log
 against the published 2026 table, and the ingest transform's idempotency.
 
