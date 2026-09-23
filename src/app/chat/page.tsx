@@ -52,6 +52,23 @@ function Chat() {
     return () => { supabase.removeChannel(ch); };
   }, [load, poolId]);
 
+  // The log fills the screen down to the message box, whatever the phone:
+  // measured, not guessed.
+  const form = useRef<HTMLFormElement>(null);
+  useEffect(() => {
+    const fit = () => {
+      const el = log.current, f = form.current;
+      if (!el || !f) return;
+      const vh = window.visualViewport?.height ?? window.innerHeight;
+      const top = el.getBoundingClientRect().top + window.scrollY;
+      el.style.height = `${Math.max(260, vh - top - f.offsetHeight - 24)}px`;
+    };
+    fit();
+    window.addEventListener("resize", fit);
+    window.visualViewport?.addEventListener("resize", fit);
+    return () => { window.removeEventListener("resize", fit); window.visualViewport?.removeEventListener("resize", fit); };
+  }, []);
+
   // Scroll to the newest and mark it read.
   const lastId = msgs.length ? msgs[msgs.length - 1].id : 0;
   useEffect(() => {
@@ -161,7 +178,7 @@ function Chat() {
           );
         })}
       </div>
-      <form className="composer" onSubmit={send}>
+      <form className="composer" onSubmit={send} ref={form}>
         {matches.length > 0 && (
           <ul className="tagpick" role="listbox">
             {matches.map((m, i) => (
