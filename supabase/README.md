@@ -22,12 +22,16 @@ picks lock at the first kickoff (or, for a replay season like 2026, when the
 member locks the round in, which can't be undone), and scores stay hidden
 until a round is locked.
 
-**Live results.** The database fetches them itself. Every hour pg_cron runs
-`raw.request_rounds()`, which asks TheSportsDB for every round of each live
-(non-replay) season through pg_net; five minutes later
-`raw.collect_responses()` lands each answer in `raw.feed_payloads` and calls
-`core_load_events()`. No server and no secrets. First live run, 2026-09-23:
-7 rounds landed, all 28 events agreed with the seeded results, 0 changes.
+**Live results.** The database fetches them itself, and only when something
+can have changed. Every 15 minutes pg_cron runs `raw.request_rounds()`, which
+asks TheSportsDB (through pg_net) for just the rounds of a live, non-replay
+season with a match that kicked off in the last six hours or has kicked off
+with no score yet. Once a day at 03:00 UTC it asks for every round, to catch
+moved fixtures. Two minutes after each request `raw.collect_responses()` lands
+the answers in `raw.feed_payloads` and calls `core_load_events()`. On days with
+no rugby it makes no calls at all. No server and no secrets. First live run,
+2026-09-23: 7 rounds landed, all 28 events agreed with the seeded results,
+0 changes.
 
 **Tests.** `sh supabase/tests/run.sh` rebuilds a scratch database on a local
 Postgres 16 from the migrations and seed, with a small stand-in for Supabase's
