@@ -6,7 +6,7 @@ import { encodeMentions, splitMentions, typingTag } from "@/lib/mentions";
 import { supabase } from "@/lib/supabase";
 import type { ChatMessage, Member } from "@/lib/types";
 
-const PAGE = 200;
+const PAGE = 30;
 
 export default function ChatPage() {
   return <NeedsPool><Chat /></NeedsPool>;
@@ -24,7 +24,9 @@ function Chat() {
   const [err, setErr] = useState<string | null>(null);
   const [picked, setPicked] = useState<number | null>(null);
   const box = useRef<HTMLTextAreaElement>(null);
-  const end = useRef<HTMLDivElement>(null);
+  const log = useRef<HTMLDivElement>(null);
+  const [more, setMore] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
   const people = useMemo(() => new Map(everyone.map((m) => [m.user_id, m])), [everyone]);
 
   useEffect(() => {
@@ -35,6 +37,7 @@ function Chat() {
   const load = useCallback(async () => {
     const { data } = await supabase.from("chat_messages").select("*").eq("pool_id", poolId).order("id", { ascending: false }).limit(PAGE);
     setMsgs(((data ?? []) as ChatMessage[]).reverse());
+    setMore((data ?? []).length === PAGE);
   }, [poolId]);
 
   // Live: new and deleted messages arrive as they happen.
@@ -52,7 +55,8 @@ function Chat() {
   // Scroll to the newest and mark it read.
   const lastId = msgs.length ? msgs[msgs.length - 1].id : 0;
   useEffect(() => {
-    end.current?.scrollIntoView({ block: "end" });
+    // Newest at the bottom, like any chat. Scroll the log, not the page.
+    if (log.current) log.current.scrollTop = log.current.scrollHeight;
     if (lastId) {
       supabase.from("chat_reads").upsert({ user_id: me.user_id, pool_id: poolId, last_read_id: lastId }).then(() =>
         window.dispatchEvent(new Event("chat-read")));
@@ -98,6 +102,20 @@ function Chat() {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
   }
 
+  // Scrolled to the top: fetch the page before the oldest shown, and keep
+  // the message you were looking at where it was.
+  async function older() {
+    if (!more || loadingOlder || !msgs.length || !log.current) return;
+    setLoadingOlder(true);
+    const el = log.current, before = el.scrollHeight;
+    const { data } = await supabase.from("chat_messages").select("*").eq("pool_id", poolId)
+      .lt("id", msgs[0].id).order("id", { ascending: false }).limit(PAGE);
+    const page = ((data ?? []) as ChatMessage[]).reverse();
+    setMore(page.length === PAGE);
+    setMsgs((xs) => [...page, ...xs]);
+    requestAnimationFrame(() => { el.scrollTop += el.scrollHeight - before; setLoadingOlder(false); });
+  }
+
   async function remove(id: number) {
     const { error } = await supabase.from("chat_messages").delete().eq("id", id);
     if (!error) setMsgs((xs) => xs.filter((x) => x.id !== id));
@@ -107,7 +125,8 @@ function Chat() {
   return (
     <div className="card chat">
       <h2>{pool!.name}</h2>
-      <div className="chatlog">
+      <div className="chatlog" ref={log} onScroll={(e) => { if (e.currentTarget.scrollTop < 60) older(); }}>
+        {more && <p className="muted small" style={{ textAlign: "center" }}>{loadingOlder ? "Loading older messages…" : "Scroll up for older messages"}</p>}
         {msgs.length === 0 && <p className="muted small">No messages yet. Start the banter.</p>}
         {msgs.map((m, i) => {
           const who = people.get(m.author_id);
@@ -141,7 +160,6 @@ function Chat() {
             </div>
           );
         })}
-        <div ref={end} />
       </div>
       <form className="composer" onSubmit={send}>
         {matches.length > 0 && (
