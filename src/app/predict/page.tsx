@@ -19,7 +19,7 @@ const PARTS = [
   { key: "result_pts", code: "RES", max: "6", what: "Right result: you picked the winner, or the draw" },
   { key: "margin_pts", code: "MAR", max: "5", what: "Exact winning margin" },
   { key: "near_pts",   code: "CLS", max: "2 per team", what: "Close: a team's score within 3 points" },
-  { key: "exact_pts",  code: "EXA", max: "10", what: "Exact score" },
+  { key: "exact_pts",  code: "EXA", max: "5", what: "Exact score" },
 ] as const;
 
 function Breakdown({ s }: { s: PredScore }) {
@@ -108,7 +108,7 @@ function Predict() {
         <h2>Round {round} {done && <span className="badge win">locked</span>}</h2>
         <p className="sub">
           {done ? <>You scored <strong>{total}</strong> this round.</>
-            : <>Call each scoreline. 6 for the right result, 5 more for the exact margin, 2 for each side within 3 points, and 10 for the exact score. Back one match as your <strong>Banker</strong> and it counts double.</>}
+            : <>Call each scoreline. 6 for the right result, 5 more for the exact margin, 2 for each side within 3 points, and 5 more for the exact score. Back one match as your <strong>Banker</strong> and it counts double.</>}
         </p>
         {ms.map((m) => {
           const h = teams.get(m.home_team_id)!, a = teams.get(m.away_team_id)!;

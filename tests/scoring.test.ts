@@ -15,7 +15,7 @@ describe("prediction scoring", () => {
 
   it("pays everything for the exact score", () => {
     const b = scorePrediction({ home_score: 24, away_score: 26 }, pumasSharks, false);
-    expect(b.total).toBe(6 + 5 + 2 + 2 + 10);
+    expect(b.total).toBe(6 + 5 + 2 + 2 + 5);
   });
 
   it("pays the winner and the near sides without the margin", () => {

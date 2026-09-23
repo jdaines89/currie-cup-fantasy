@@ -109,11 +109,11 @@ select pg_temp.check((select home_score from public.predictions where match_id =
 -- Scoring matches the app's rules (Sharks won 26-24 away at Pumas in R1, captain)
 select pg_temp.check((select total_pts from public.pool_pick_scores where team_id = '142073') = (10 + 5 - 2) * 2,
   'captain Sharks score (10 win + 5 attack - 2 defence) x2 = 26');
-select pg_temp.check((select total_pts from public.prediction_scores where match_id = '2498543') = (6 + 5 + 2 + 2 + 10) * 2,
-  'exact prediction on the Banker scores 25 x2 = 50');
+select pg_temp.check((select total_pts from public.prediction_scores where match_id = '2498543') = (6 + 5 + 2 + 2 + 5) * 2,
+  'exact prediction on the Banker scores 20 x2 = 40');
 select pg_temp.check((select total_pts from public.prediction_scores where match_id = '2498544') = 6,
   'right result only scores 6');
-select pg_temp.check((select total_points from public.leaderboard where team_name = 'Daines XV') = 56,
+select pg_temp.check((select total_points from public.leaderboard where team_name = 'Daines XV') = 46,
   'leaderboard totals predictions only');
 
 -- The ingest transform: a TheSportsDB round payload lands in core, idempotently

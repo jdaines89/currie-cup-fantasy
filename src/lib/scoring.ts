@@ -21,7 +21,7 @@ export const PREDICTION_RULES = {
   margin: 5,        // and the exact winning margin
   nearSide: 2,      // per side within nearWithin points of the real score
   nearWithin: 3,
-  exact: 10,        // the exact scoreline
+  exact: 5,         // the exact scoreline
   banker: 2,        // one match a round, backed to count double
 };
 
