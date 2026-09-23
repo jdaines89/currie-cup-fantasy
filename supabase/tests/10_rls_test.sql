@@ -256,6 +256,32 @@ exception when insufficient_privilege then raise notice 'ok: a match lock cannot
 end $$;
 reset role;
 
+-- Loopholes closed in the 2026-09-23 security review
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000a');
+do $$ begin
+  update public.predictions set match_id = 't-future'
+  where match_id = 't-later' and entry_id in (select id from public.entries where user_id = auth.uid());
+  raise exception 'FAILED: moved a locked call to an open match';
+exception when raise_exception then raise notice 'ok: a locked call cannot be moved to another match';
+end $$;
+do $$ begin
+  insert into public.chat_messages (pool_id, body, created_at)
+  select pool_id, 'from the future', now() + interval '1 year' from public.pool_members where user_id = auth.uid() limit 1;
+  raise exception 'FAILED: posted a chat message with its own date';
+exception when insufficient_privilege then raise notice 'ok: chat times come from the database';
+end $$;
+do $$ begin
+  update public.members set display_name = 'andy' where user_id = auth.uid();
+  raise exception 'FAILED: took a mate''s display name';
+exception when unique_violation then raise notice 'ok: display names are unique, ignoring case';
+end $$;
+do $$ begin
+  update public.members set display_name = repeat('x', 25) where user_id = auth.uid();
+  raise exception 'FAILED: a 25-character display name was accepted';
+exception when check_violation then raise notice 'ok: display names stay short';
+end $$;
+reset role;
+
 -- Scores a rugby side can't post are refused
 insert into public.matches (id, season, round, kickoff_at, home_team_id, away_team_id, status, source)
 values ('t-future', '2027', 2, now() + interval '5 days', '142072', '142073', 'SCHEDULED', 'test');
