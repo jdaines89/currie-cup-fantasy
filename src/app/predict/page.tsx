@@ -5,6 +5,7 @@ import { NeedsEntry, useLeague } from "@/components/league";
 import { RoundPicker } from "@/components/round-picker";
 import { Crest } from "@/components/team";
 import { kickoff } from "@/lib/format";
+import { isRugbyScore, scoreInput } from "@/lib/rugby";
 import { firstOpenRound, lockRound, useRoundLocks } from "@/lib/rounds";
 import { supabase } from "@/lib/supabase";
 import type { Prediction } from "@/lib/types";
@@ -21,6 +22,8 @@ const PARTS = [
   { key: "near_pts",   code: "CLS", max: "2 per team", what: "Close: a team's score within 3 points" },
   { key: "exact_pts",  code: "EXA", max: "5", what: "Exact score" },
 ] as const;
+
+const bad = (v: string) => v !== "" && !isRugbyScore(Number(v));
 
 interface MateCall extends Prediction { name: string; pts: number | null }
 
@@ -88,9 +91,10 @@ function Predict() {
   const filled = ms.filter((m) => preds.has(m.id)).length;
   const hasBanker = ms.some((m) => preds.get(m.id)?.is_banker);
 
-  async function save(matchId: string, h: string, a: string) {
+  async function save(matchId: string, rawH: string, rawA: string) {
+    const h = scoreInput(rawH), a = scoreInput(rawA);
     setDraft((d) => ({ ...d, [matchId]: [h, a] }));
-    if (h === "" || a === "") return;
+    if (h === "" || a === "" || !isRugbyScore(+h) || !isRugbyScore(+a)) return;
     setMsg(null);
     const { error } = await supabase.from("predictions").upsert(
       { entry_id: entry!.id, match_id: matchId, home_score: Number(h), away_score: Number(a) });
@@ -172,13 +176,16 @@ function Predict() {
               </div>
               <div className="pred">
                 <span className="pteam"><span className="ha home">Home</span><Crest team={h} /><strong>{h.display_name}</strong></span>
-                <input className="pbox" inputMode="numeric" type="number" min={0} max={150} disabled={shut} value={d[0]}
+                <input className={`pbox${bad(d[0]) ? " bad" : ""}`} inputMode="numeric" pattern="[0-9]*" maxLength={2} disabled={shut} value={d[0]}
                   aria-label={`${h.display_name} score`} onChange={(e) => save(m.id, e.target.value, d[1])} />
                 <span className="muted">–</span>
-                <input className="pbox" inputMode="numeric" type="number" min={0} max={150} disabled={shut} value={d[1]}
+                <input className={`pbox${bad(d[1]) ? " bad" : ""}`} inputMode="numeric" pattern="[0-9]*" maxLength={2} disabled={shut} value={d[1]}
                   aria-label={`${a.display_name} score`} onChange={(e) => save(m.id, d[0], e.target.value)} />
                 <span className="pteam away"><span className="ha">Away</span><Crest team={a} /><strong>{a.display_name}</strong></span>
               </div>
+              {!shut && (bad(d[0]) || bad(d[1])) && (
+                <p className="scorewarn">A rugby side can&apos;t score 1, 2 or 4, so this call isn&apos;t saved yet.</p>
+              )}
               {shut && m.home_score !== null && (done || !season.is_replay) && (
                 <div className="presult">
                   <div>

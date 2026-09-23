@@ -256,6 +256,20 @@ exception when insufficient_privilege then raise notice 'ok: a match lock cannot
 end $$;
 reset role;
 
+-- Scores a rugby side can't post are refused
+insert into public.matches (id, season, round, kickoff_at, home_team_id, away_team_id, status, source)
+values ('t-future', '2027', 2, now() + interval '5 days', '142072', '142073', 'SCHEDULED', 'test');
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000b');
+do $$ begin
+  insert into public.predictions (entry_id, match_id, home_score, away_score)
+  select id, 't-future', 4, 10 from public.entries where user_id = auth.uid() and season = '2027';
+  raise exception 'FAILED: a score of 4 was accepted';
+exception when check_violation then raise notice 'ok: 1, 2 and 4 are not rugby scores';
+end $$;
+insert into public.predictions (entry_id, match_id, home_score, away_score)
+select id, 't-future', 3, 0 from public.entries where user_id = auth.uid() and season = '2027';
+reset role;
+
 -- Bonus points from Wikipedia's log: our losing bonus, their try bonus
 insert into public.matches (id, season, round, kickoff_at, home_team_id, away_team_id, home_score, away_score, status, source)
 values ('t-played', '2027', 1, now() - interval '3 hours', '142072', '142073', 31, 24, 'FT', 'test');

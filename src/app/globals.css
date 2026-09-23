@@ -329,3 +329,5 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
 .mactions { display: flex; gap: 6px; align-items: center; }
 .bank.locked { cursor: default; color: var(--accent); border-color: var(--accent-dim); }
 .roundactions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.pbox.bad { border-color: var(--danger); color: var(--danger); }
+.scorewarn { margin: 0; padding: 0 12px 10px; font-size: 12px; color: var(--danger); }
