@@ -9,7 +9,30 @@ import { firstOpenRound, lockRound, useRoundLocks } from "@/lib/rounds";
 import { supabase } from "@/lib/supabase";
 import type { Prediction } from "@/lib/types";
 
-interface PredScore { match_id: string; total_pts: number }
+interface PredScore {
+  match_id: string; total_pts: number; is_banker: boolean;
+  result_pts: number; margin_pts: number; near_pts: number; exact_pts: number;
+}
+
+// What each chip on a scored match means. Mirrors the prediction_scores view.
+const PARTS = [
+  { key: "result_pts", code: "RES", max: "6", what: "Right result: you picked the winner, or the draw" },
+  { key: "margin_pts", code: "MAR", max: "5", what: "Exact winning margin" },
+  { key: "near_pts",   code: "CLS", max: "2 per team", what: "Close: a team's score within 3 points" },
+  { key: "exact_pts",  code: "EXA", max: "10", what: "Exact score" },
+] as const;
+
+function Breakdown({ s }: { s: PredScore }) {
+  return (
+    <div className="breakdown">
+      {PARTS.map((p) => {
+        const v = s[p.key];
+        return <span key={p.code} className={v > 0 ? "pchip on" : "pchip"} title={p.what}>{p.code}{v > 0 ? ` +${v}` : ""}</span>;
+      })}
+      {s.is_banker && <span className="pchip bank2" title="Banker: this match counts double">×2</span>}
+    </div>
+  );
+}
 
 export default function PredictPage() {
   return <NeedsEntry><Predict /></NeedsEntry>;
@@ -22,7 +45,7 @@ function Predict() {
   const [round, setRound] = useState<number | null>(null);
   const [preds, setPreds] = useState<Map<string, Prediction>>(new Map());
   const [draft, setDraft] = useState<Record<string, [string, string]>>({});
-  const [scores, setScores] = useState<Map<string, number>>(new Map());
+  const [scores, setScores] = useState<Map<string, PredScore>>(new Map());
   const [msg, setMsg] = useState<string | null>(null);
 
   useEffect(() => { if (round === null && rounds.length) setRound(firstOpenRound(rounds, isLocked)); }, [round, rounds, isLocked]);
@@ -33,18 +56,18 @@ function Predict() {
     const ids = matches.filter((m) => m.round === round).map((m) => m.id);
     const [p, s] = await Promise.all([
       supabase.from("predictions").select("*").eq("entry_id", entry!.id).in("match_id", ids),
-      supabase.from("prediction_scores").select("match_id, total_pts").eq("entry_id", entry!.id).in("match_id", ids),
+      supabase.from("prediction_scores").select("match_id, total_pts, is_banker, result_pts, margin_pts, near_pts, exact_pts").eq("entry_id", entry!.id).in("match_id", ids),
     ]);
     const map = new Map(((p.data ?? []) as Prediction[]).map((x) => [x.match_id, x]));
     setPreds(map);
     setDraft(Object.fromEntries([...map].map(([k, v]) => [k, [String(v.home_score), String(v.away_score)]])));
-    setScores(new Map(((s.data ?? []) as PredScore[]).map((x) => [x.match_id, x.total_pts])));
+    setScores(new Map(((s.data ?? []) as PredScore[]).map((x) => [x.match_id, x])));
   }, [entry, round, matches]);
   useEffect(() => { load(); }, [load]);
 
   if (round === null) return null;
   const done = isLocked(round);
-  const total = [...scores.values()].reduce((a, b) => a + b, 0);
+  const total = [...scores.values()].reduce((a, b) => a + b.total_pts, 0);
 
   async function save(matchId: string, h: string, a: string) {
     setDraft((d) => ({ ...d, [matchId]: [h, a] }));
@@ -111,13 +134,22 @@ function Predict() {
               </div>
               {shut && m.home_score !== null && (done || !season.is_replay) && (
                 <div className="presult">
-                  <span>Real score <strong>{m.home_score}–{m.away_score}</strong></span>
-                  <span className="pts">{scores.has(m.id) ? `+${scores.get(m.id)}` : "no call"}</span>
+                  <div>
+                    <span>Real score <strong>{m.home_score}–{m.away_score}</strong></span>
+                    {scores.has(m.id) && <Breakdown s={scores.get(m.id)!} />}
+                  </div>
+                  <span className="pts">{scores.has(m.id) ? `+${scores.get(m.id)!.total_pts}` : "no call"}</span>
                 </div>
               )}
             </div>
           );
         })}
+        {scores.size > 0 && (
+          <dl className="legend">
+            {PARTS.map((p) => <div key={p.code}><dt><span className="pchip on">{p.code}</span></dt><dd>{p.what}, +{p.max}</dd></div>)}
+            <div><dt><span className="pchip bank2">×2</span></dt><dd>Your Banker, so that match counts double</dd></div>
+          </dl>
+        )}
         {msg && <p className="small" style={{ color: "var(--danger)" }}>{msg}</p>}
         {!season.is_replay && (
           <label className="small muted toggle">
