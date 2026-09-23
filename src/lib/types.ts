@@ -9,7 +9,8 @@ export interface Match {
   home_score: number | null; away_score: number | null;
   venue: string | null; status: string;
 }
-export interface Member { user_id: string; email: string; display_name: string; is_admin: boolean }
+export interface Member { user_id: string; email: string; display_name: string; is_admin: boolean; email_reminders: boolean }
+export interface ChatMessage { id: number; author_id: string; body: string; created_at: string }
 export interface Entry { id: number; user_id: string; season: string; team_name: string }
 export interface Prediction { entry_id: number; match_id: string; home_score: number; away_score: number; is_banker: boolean }
 export interface StandingRow {

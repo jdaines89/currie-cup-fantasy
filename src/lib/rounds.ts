@@ -15,11 +15,14 @@ export function useRoundLocks(entryId: number | undefined, season: Season, match
   useEffect(() => { reload(); }, [reload]);
 
   const now = Date.now();
+  // A replay round locks when the member locks it in; a live one is done once
+  // every match in it has kicked off (each match locks at its own kickoff).
   const isLocked = (round: number) => season.is_replay
     ? locked.has(round)
-    : matches.some((m) => m.round === round && new Date(m.kickoff_at).getTime() <= now);
+    : matches.filter((m) => m.round === round).every((m) => new Date(m.kickoff_at).getTime() <= now);
+  const matchStarted = (m: Match) => !season.is_replay && new Date(m.kickoff_at).getTime() <= now;
 
-  return { locked, isLocked, reload };
+  return { locked, isLocked, matchStarted, reload };
 }
 
 export async function lockRound(entryId: number, season: string, round: number) {

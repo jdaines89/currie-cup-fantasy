@@ -10,6 +10,7 @@ interface League {
   matches: Match[];
   rounds: number[];
   me: Member;
+  members: Member[];
   entry: Entry | null;
   reloadEntry: () => Promise<void>;
 }
@@ -33,10 +34,11 @@ export function LeagueProvider({ children }: { children: ReactNode }) {
     const [seasons, teams, members] = await Promise.all([
       supabase.from("seasons").select("*").order("id", { ascending: false }).limit(1),
       supabase.from("teams").select("id, display_name, short_name, stadium, colour, colour_ink, badge_url"),
-      supabase.from("members").select("*").eq("user_id", uid ?? ""),
+      supabase.from("members").select("*").order("display_name"),
     ]);
     const season = seasons.data?.[0] as Season | undefined;
-    const me = members.data?.[0] as Member | undefined;
+    const everyone = (members.data ?? []) as Member[];
+    const me = everyone.find((m) => m.user_id === uid);
     if (!me) { setError("Your account isn't a member of this league. Ask Justin for an invite."); return; }
     if (!season) { setError("No season has been loaded yet."); return; }
 
@@ -46,7 +48,7 @@ export function LeagueProvider({ children }: { children: ReactNode }) {
     ]);
     const ms = (matches.data ?? []) as Match[];
     setLeague({
-      season, me, matches: ms,
+      season, me, members: everyone, matches: ms,
       teams: new Map(((teams.data ?? []) as Team[]).map((t) => [t.id, t])),
       rounds: [...new Set(ms.map((m) => m.round))].sort((a, b) => a - b),
       entry: (entries.data?.[0] as Entry | undefined) ?? null,

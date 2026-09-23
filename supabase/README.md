@@ -7,7 +7,8 @@ the one before it:
 |---|---|---|---|
 | raw | `raw.feed_payloads` | Every feed response, verbatim, append-only, deduplicated by hash | Ingest (pg_cron + pg_net) |
 | core | `seasons`, `teams`, `matches`, `players`, `player_match_stats`, `season_bonus_points` | Clean typed rows, each traceable to its raw payload (`matches.raw_id`) | `core_load_events()` from raw |
-| league | `members`, `entries`, `predictions` (with `is_banker`), `pool_picks` (retired, unread), `squad_picks`, `round_locks` | What members do | Members, own rows only |
+| league | `members`, `entries`, `predictions` (with `is_banker`), `pool_picks` (retired, unread), `squad_picks`, `round_locks`, `chat_messages`, `chat_mentions`, `chat_reads` | What members do | Members, own rows only |
+| notify | `notify.settings`, `notify.reminders_sent`, `notify.due_reminders()` | Kickoff reminder emails | pg_cron |
 | marts | `standings`, `prediction_scores`, `leaderboard` | Views, never stale, no rescore job | Nobody: computed |
 
 **Access.** Invite-only. Sending an invite from Supabase (Authentication >
@@ -17,10 +18,23 @@ signed in, or signed in without an invite, sees nothing; members read the
 whole league and write only their own entry and picks. Reference data changes
 only through the ingest job's service role.
 
-**Rules in the database, not the app.** Four unions a round, one captain,
-picks lock at the first kickoff (or, for a replay season like 2026, when the
-member locks the round in, which can't be undone), and scores stay hidden
-until a round is locked.
+**Rules in the database, not the app.** One Banker a round; in a live season
+each prediction locks at its own match's kickoff (a replay season like 2026
+locks a round when the member locks it in, which can't be undone); scores
+stay hidden until a round is locked.
+
+**Chat.** A tag is stored as `<@user_id>`, never as a name, so it survives a
+rename; a trigger reads tags into `chat_mentions` (members only). Nobody posts
+as anyone else or edits a message; you can delete your own. New messages reach
+open screens through Supabase Realtime, under the same row-level security.
+
+**Kickoff reminders.** Every five minutes `notify.send_reminders()` emails
+anyone with no score for a live match kicking off within the hour: one email
+per person through Brevo's API (pg_net), each match recorded in
+`notify.reminders_sent` so nobody is reminded twice. Members can switch them
+off. The Brevo API key lives in Supabase Vault as `brevo_api_key`, set once in
+the SQL editor with `select vault.create_secret('<key>', 'brevo_api_key');`;
+without it nothing is sent.
 
 **Live results.** The database fetches them itself, and only when something
 can have changed. Every 15 minutes pg_cron runs `raw.request_rounds()`, which
@@ -35,8 +49,8 @@ no rugby it makes no calls at all. No server and no secrets. First live run,
 
 **Tests.** `sh supabase/tests/run.sh` rebuilds a scratch database on a local
 Postgres 16 from the migrations and seed, with a small stand-in for Supabase's
-auth schema, and runs 24 behaviour checks: access for strangers, self-registered accounts, members and
-other members, the pick rules, scoring against the app's rules, the log
+auth schema, and runs the behaviour checks: access for strangers, self-registered accounts, members and
+other members, the pick rules, chat access and tags, who gets a reminder, scoring against the app's rules, the log
 against the published 2026 table, and the ingest transform's idempotency.
 
 **Seed.** `npx tsx scripts/supabase-seed.ts` regenerates `seed.sql` from

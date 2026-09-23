@@ -132,4 +132,56 @@ update auth.users set invited_at = now() where id = '00000000-0000-0000-0000-000
 select pg_temp.check(exists (select 1 from public.members where user_id = '00000000-0000-0000-0000-00000000000c'),
   'an invite stamped after the insert still makes a member');
 
+-- Chat: members talk, tags are read out, nobody posts as someone else
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000a');
+insert into public.chat_messages (body) values
+  ('<@00000000-0000-0000-0000-00000000000b> looks like you''re taking this round. <@00000000-0000-0000-0000-0000000000ff>?');
+select pg_temp.check((select count(*) from public.chat_mentions) = 1, 'a tag for a member is recorded, a tag for a stranger is not');
+select pg_temp.check((select user_id::text from public.chat_mentions) = '00000000-0000-0000-0000-00000000000b', 'the tag points at Andy');
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000b');
+select pg_temp.check((select count(*) from public.chat_messages) = 1, 'Andy reads the chat');
+do $$ begin
+  insert into public.chat_messages (author_id, body) values ('00000000-0000-0000-0000-00000000000a', 'I am Justin');
+  raise exception 'FAILED: posted as someone else';
+exception when insufficient_privilege then raise notice 'ok: nobody posts as someone else';
+end $$;
+delete from public.chat_messages;
+do $$ begin
+  update public.chat_messages set body = 'edited';
+  raise exception 'FAILED: edited a message';
+exception when insufficient_privilege then raise notice 'ok: messages cannot be edited';
+end $$;
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000ff');
+select pg_temp.check((select count(*) from public.chat_messages) = 0, 'a stranger reads no chat');
+do $$ begin
+  insert into public.chat_messages (body) values ('let me in');
+  raise exception 'FAILED: stranger posted';
+exception when insufficient_privilege then raise notice 'ok: a stranger cannot post';
+end $$;
+reset role;
+select pg_temp.check((select count(*) from public.chat_messages) = 1, 'Andy could not delete Justin''s message');
+
+-- Kickoff reminders, on a live season: one match started, one in 30 minutes
+insert into public.seasons (id, name, is_replay) values ('2027', 'Currie Cup 2027', false);
+insert into public.matches (id, season, round, kickoff_at, home_team_id, away_team_id, status, source) values
+  ('t-started', '2027', 1, now() - interval '1 minute', '142072', '142073', 'SCHEDULED', 'test'),
+  ('t-soon',    '2027', 1, now() + interval '30 minutes', '142075', '142070', 'SCHEDULED', 'test'),
+  ('t-later',   '2027', 1, now() + interval '3 hours', '142067', '142068', 'SCHEDULED', 'test');
+select pg_temp.check((select count(*) from notify.due_reminders()) = 3, 'three members have no score for the match in 30 minutes');
+select pg_temp.check((select bool_and(match_ids = array['t-soon']) from notify.due_reminders()), 'only the match inside the hour is in the reminder');
+insert into public.entries (user_id, season, team_name) values ('00000000-0000-0000-0000-00000000000a', '2027', 'Daines XV');
+insert into public.predictions (entry_id, match_id, home_score, away_score)
+select id, 't-soon', 20, 18 from public.entries where season = '2027';
+do $$ begin
+  insert into public.predictions (entry_id, match_id, home_score, away_score)
+  select id, 't-started', 20, 18 from public.entries where season = '2027';
+  raise exception 'FAILED: called a match after kickoff';
+exception when raise_exception then raise notice 'ok: a live match locks at its own kickoff';
+end $$;
+select pg_temp.check((select count(*) from notify.due_reminders()) = 2, 'a called score means no reminder');
+update public.members set email_reminders = false where user_id = '00000000-0000-0000-0000-00000000000b';
+select pg_temp.check((select count(*) from notify.due_reminders()) = 1, 'reminders can be turned off');
+insert into notify.reminders_sent (user_id, match_id) values ('00000000-0000-0000-0000-00000000000c', 't-soon');
+select pg_temp.check((select count(*) from notify.due_reminders()) = 0, 'nobody is reminded twice');
+
 \echo ALL CHECKS PASSED

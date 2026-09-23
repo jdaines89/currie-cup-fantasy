@@ -16,8 +16,9 @@ export default function PredictPage() {
 }
 
 function Predict() {
-  const { entry, season, matches, rounds, teams } = useLeague();
-  const { locked, isLocked, reload: reloadLocks } = useRoundLocks(entry!.id, season, matches);
+  const { entry, season, matches, rounds, teams, me } = useLeague();
+  const [remind, setRemind] = useState(me.email_reminders);
+  const { locked, isLocked, matchStarted, reload: reloadLocks } = useRoundLocks(entry!.id, season, matches);
   const [round, setRound] = useState<number | null>(null);
   const [preds, setPreds] = useState<Map<string, Prediction>>(new Map());
   const [draft, setDraft] = useState<Record<string, [string, string]>>({});
@@ -62,6 +63,12 @@ function Predict() {
     if (error) setMsg(error.message); else await load();
   }
 
+  async function toggleReminders(on: boolean) {
+    setRemind(on);
+    const { error } = await supabase.from("members").update({ email_reminders: on }).eq("user_id", me.user_id);
+    if (error) { setRemind(!on); setMsg(error.message); }
+  }
+
   async function lockIn() {
     const { error } = await lockRound(entry!.id, season.id, round!);
     if (error) setMsg(error.message);
@@ -84,23 +91,25 @@ function Predict() {
           const h = teams.get(m.home_team_id)!, a = teams.get(m.away_team_id)!;
           const d = draft[m.id] ?? ["", ""];
           const p = preds.get(m.id);
+          const shut = done || matchStarted(m);
+          const bankerShut = ms.some((x) => preds.get(x.id)?.is_banker && matchStarted(x));
           return (
             <div key={m.id} className={p?.is_banker ? "match banker" : "match"}>
               <div className="mhead">
                 <span>{kickoff(m.kickoff_at)} · {m.venue}</span>
                 {p?.is_banker ? <span className="bank on">Banker ×2</span>
-                  : !done && p ? <button type="button" className="bank" onClick={() => back(m.id)}>Make Banker</button> : null}
+                  : !shut && !bankerShut && p ? <button type="button" className="bank" onClick={() => back(m.id)}>Make Banker</button> : null}
               </div>
               <div className="pred">
                 <span className="pteam"><Crest team={h} /><strong>{h.display_name}</strong></span>
-                <input className="pbox" inputMode="numeric" type="number" min={0} max={150} disabled={done} value={d[0]}
+                <input className="pbox" inputMode="numeric" type="number" min={0} max={150} disabled={shut} value={d[0]}
                   aria-label={`${h.display_name} score`} onChange={(e) => save(m.id, e.target.value, d[1])} />
                 <span className="muted">–</span>
-                <input className="pbox" inputMode="numeric" type="number" min={0} max={150} disabled={done} value={d[1]}
+                <input className="pbox" inputMode="numeric" type="number" min={0} max={150} disabled={shut} value={d[1]}
                   aria-label={`${a.display_name} score`} onChange={(e) => save(m.id, d[0], e.target.value)} />
                 <span className="pteam away"><Crest team={a} /><strong>{a.display_name}</strong></span>
               </div>
-              {done && m.home_score !== null && (
+              {shut && m.home_score !== null && (done || !season.is_replay) && (
                 <div className="presult">
                   <span>Real score <strong>{m.home_score}–{m.away_score}</strong></span>
                   <span className="pts">{scores.has(m.id) ? `+${scores.get(m.id)}` : "no call"}</span>
@@ -110,6 +119,12 @@ function Predict() {
           );
         })}
         {msg && <p className="small" style={{ color: "var(--danger)" }}>{msg}</p>}
+        {!season.is_replay && (
+          <label className="small muted toggle">
+            <input type="checkbox" checked={remind} onChange={(e) => toggleReminders(e.target.checked)} />
+            Email me an hour before kickoff if I haven&apos;t called a score
+          </label>
+        )}
         {!done && season.is_replay && (
           <>
             <p className="small muted">Locking in a round can't be undone. Then you see how it scored.</p>
