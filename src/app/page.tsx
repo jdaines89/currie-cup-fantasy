@@ -27,8 +27,8 @@ export default function Home() {
           {season.name}{season.is_replay && " · replay: the season has been played, so each of you locks a round in and then sees how it scored."}
         </p>
         {entry
-          ? <p style={{ margin: 0 }}>Your team is <strong>{entry.team_name}</strong>. <Link href="/pool/">Pick your unions</Link> or <Link href="/predict/">predict scores</Link>.</p>
-          : <p style={{ margin: 0 }}><Link href="/pool/">Name your team</Link> to start playing.</p>}
+          ? <p style={{ margin: 0 }}>Your team is <strong>{entry.team_name}</strong>. <Link href="/predict/">Call this round's scores</Link>.</p>
+          : <p style={{ margin: 0 }}><Link href="/predict/">Name your team</Link> to start playing.</p>}
       </div>
       <div className="grid2">
         <div className="card">

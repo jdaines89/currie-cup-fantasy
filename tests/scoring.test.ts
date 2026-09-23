@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { scorePlayer, scorePoolPick, type PlayerStatLine } from "../src/lib/scoring";
+import { scorePlayer, scorePrediction, type PlayerStatLine } from "../src/lib/scoring";
 import { buildLog } from "../src/lib/standings";
 import { toPositionGroup } from "../src/lib/positions";
 
@@ -9,41 +9,29 @@ const bolandGriquas = {
   home_score: 17, away_score: 48,
 };
 
-describe("union pool scoring", () => {
-  it("pays the winner for the win, the points and the margin", () => {
-    const b = scorePoolPick("142070", bolandGriquas, false);
-    expect(b.result).toBe(10);      // win
-    expect(b.attack).toBe(9);       // 48 / 5
-    expect(b.defence).toBe(-1);     // 17 / 10
-    expect(b.bonus).toBe(5);        // won by 31
-    expect(b.total).toBe(23);
+describe("prediction scoring", () => {
+  // Round 1: Pumas 24 - 26 Sharks XV.
+  const pumasSharks = { home_team_id: "142072", away_team_id: "142073", home_score: 24, away_score: 26 };
+
+  it("pays everything for the exact score", () => {
+    const b = scorePrediction({ home_score: 24, away_score: 26 }, pumasSharks, false);
+    expect(b.total).toBe(6 + 5 + 2 + 2 + 10);
   });
 
-  it("still pays the loser for points scored", () => {
-    const b = scorePoolPick("142063", bolandGriquas, false);
-    expect(b.result).toBe(0);
-    expect(b.attack).toBe(3);       // 17 / 5
-    expect(b.defence).toBe(-4);     // 48 / 10
-    expect(b.bonus).toBe(0);        // lost by 31, no narrow-loss bonus
-    expect(b.total).toBe(-1);
+  it("pays the winner and the near sides without the margin", () => {
+    const b = scorePrediction({ home_score: 22, away_score: 27 }, pumasSharks, false);
+    expect([b.result, b.margin, b.near, b.exact]).toEqual([6, 0, 4, 0]);
   });
 
-  it("gives a narrow loser the consolation bonus", () => {
-    // Round 1: Pumas 24 - 26 Sharks XV, a two-point margin.
-    const b = scorePoolPick("142072", {
-      home_team_id: "142072", away_team_id: "142073", home_score: 24, away_score: 26,
-    }, false);
-    expect(b.bonus).toBe(3);
+  it("pays a wrong result only for scores that were close", () => {
+    const b = scorePrediction({ home_score: 27, away_score: 24 }, pumasSharks, false);
+    expect(b.total).toBe(4);
   });
 
-  it("doubles the captain", () => {
-    const plain = scorePoolPick("142070", bolandGriquas, false);
-    const capped = scorePoolPick("142070", bolandGriquas, true);
-    expect(capped.total).toBe(plain.base * 2);
-  });
-
-  it("refuses a union that was not in the match", () => {
-    expect(() => scorePoolPick("142062", bolandGriquas, false)).toThrow();
+  it("doubles the Banker", () => {
+    const b = scorePrediction({ home_score: 10, away_score: 30 }, bolandGriquas, true);
+    expect(b.base).toBe(6);
+    expect(b.total).toBe(12);
   });
 });
 

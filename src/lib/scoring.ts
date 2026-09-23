@@ -3,8 +3,8 @@
  *
  * Two games share one database:
  *
- *  - Union Pool runs entirely on data the free feed actually gives us -- the
- *    final score of a real match -- so it scores itself with no manual work.
+ *  - Score predictions run entirely on data the free feed actually gives us
+ *    -- the final score of a real match -- so they score themselves.
  *  - Player fantasy needs per-player numbers, which no free feed carries for
  *    this competition. It scores whatever stats have been imported.
  */
@@ -16,66 +16,41 @@ export interface MatchResult {
   away_score: number;
 }
 
-export interface PoolRules {
-  win: number;
-  draw: number;
-  pointsScoredPer: number;    // one fantasy point per N points scored
-  pointsConcededPer: number;  // minus one per N points conceded
-  bigWinMargin: number;
-  bigWinBonus: number;
-  narrowLossMargin: number;
-  narrowLossBonus: number;
-  captainMultiplier: number;
-}
-
-export const POOL_RULES: PoolRules = {
-  win: 10,
-  draw: 5,
-  pointsScoredPer: 5,
-  pointsConcededPer: 10,
-  bigWinMargin: 15,
-  bigWinBonus: 5,
-  narrowLossMargin: 7,
-  narrowLossBonus: 3,
-  captainMultiplier: 2,
+export const PREDICTION_RULES = {
+  result: 6,        // called the winner (or the draw)
+  margin: 5,        // and the exact winning margin
+  nearSide: 2,      // per side within nearWithin points of the real score
+  nearWithin: 3,
+  exact: 10,        // the exact scoreline
+  banker: 2,        // one match a round, backed to count double
 };
 
-export interface PoolBreakdown {
+export interface PredictionBreakdown {
   result: number;
-  attack: number;
-  defence: number;
-  bonus: number;
+  margin: number;
+  near: number;
+  exact: number;
   base: number;
-  captain: boolean;
+  banker: boolean;
   total: number;
 }
 
-/** What one union earns its picker from one real result. */
-export function scorePoolPick(
-  teamId: string,
+/** What one scoreline call earns against the real result. Mirrors the
+ *  prediction_scores view in supabase/migrations. */
+export function scorePrediction(
+  pred: { home_score: number; away_score: number },
   match: MatchResult,
-  isCaptain: boolean,
-  rules: PoolRules = POOL_RULES,
-): PoolBreakdown {
-  const isHome = match.home_team_id === teamId;
-  const isAway = match.away_team_id === teamId;
-  if (!isHome && !isAway) throw new Error(`${teamId} did not play in this match`);
-
-  const scored = isHome ? match.home_score : match.away_score;
-  const conceded = isHome ? match.away_score : match.home_score;
-  const margin = scored - conceded;
-
-  const result = margin > 0 ? rules.win : margin === 0 ? rules.draw : 0;
-  const attack = Math.floor(scored / rules.pointsScoredPer);
-  const defence = -Math.floor(conceded / rules.pointsConcededPer);
-
-  let bonus = 0;
-  if (margin >= rules.bigWinMargin) bonus += rules.bigWinBonus;
-  if (margin < 0 && -margin <= rules.narrowLossMargin) bonus += rules.narrowLossBonus;
-
-  const base = result + attack + defence + bonus;
-  const total = isCaptain ? base * rules.captainMultiplier : base;
-  return { result, attack, defence, bonus, base, captain: isCaptain, total };
+  isBanker: boolean,
+  rules = PREDICTION_RULES,
+): PredictionBreakdown {
+  const rightResult = Math.sign(pred.home_score - pred.away_score) === Math.sign(match.home_score - match.away_score);
+  const result = rightResult ? rules.result : 0;
+  const margin = rightResult && pred.home_score - pred.away_score === match.home_score - match.away_score ? rules.margin : 0;
+  const near = (Math.abs(pred.home_score - match.home_score) <= rules.nearWithin ? rules.nearSide : 0)
+             + (Math.abs(pred.away_score - match.away_score) <= rules.nearWithin ? rules.nearSide : 0);
+  const exact = pred.home_score === match.home_score && pred.away_score === match.away_score ? rules.exact : 0;
+  const base = result + margin + near + exact;
+  return { result, margin, near, exact, base, banker: isBanker, total: isBanker ? base * rules.banker : base };
 }
 
 export interface PlayerStatLine {

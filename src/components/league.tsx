@@ -77,7 +77,7 @@ export function NeedsEntry({ children }: { children: ReactNode }) {
   return (
     <div className="card narrow">
       <h2>Name your team</h2>
-      <p className="sub">One team per season. It plays the union pool and score predictions.</p>
+      <p className="sub">One team per season. You call every scoreline, and back one match a round as your Banker.</p>
       <form onSubmit={create} className="row">
         <input required maxLength={40} placeholder="Team name" value={name} onChange={(e) => setName(e.target.value)} />
         <button type="submit">Create</button>

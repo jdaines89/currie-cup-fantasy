@@ -70,6 +70,11 @@ exception when raise_exception then raise notice 'ok: a fifth pick is refused';
 end $$;
 insert into public.predictions (entry_id, match_id, home_score, away_score)
 select id, '2498543', 24, 26 from public.entries where team_name = 'Daines XV';
+insert into public.predictions (entry_id, match_id, home_score, away_score, is_banker)
+select id, '2498544', 20, 10, true from public.entries where team_name = 'Daines XV';
+update public.predictions set is_banker = true where match_id = '2498543';
+select pg_temp.check((select string_agg(match_id, ',') from public.predictions where is_banker) = '2498543',
+  'backing a second match moves the Banker, one a round');
 select pg_temp.check((select count(*) from public.pool_pick_scores) = 0, 'no score shows before the round is locked in');
 insert into public.round_locks (entry_id, season, round)
 select id, '2026', 1 from public.entries where team_name = 'Daines XV';
@@ -99,13 +104,17 @@ delete from public.pool_picks;
 update public.predictions set home_score = 0;
 reset role;
 select pg_temp.check((select count(*) from public.pool_picks) = 4, 'Andy could not delete Justin''s picks');
-select pg_temp.check((select home_score from public.predictions) = 24, 'Andy could not change Justin''s prediction');
+select pg_temp.check((select home_score from public.predictions where match_id = '2498543') = 24, 'Andy could not change Justin''s prediction');
 
 -- Scoring matches the app's rules (Sharks won 26-24 away at Pumas in R1, captain)
 select pg_temp.check((select total_pts from public.pool_pick_scores where team_id = '142073') = (10 + 5 - 2) * 2,
   'captain Sharks score (10 win + 5 attack - 2 defence) x2 = 26');
-select pg_temp.check((select total_pts from public.prediction_scores) = 6 + 5 + 2 + 2 + 10,
-  'exact prediction scores 25');
+select pg_temp.check((select total_pts from public.prediction_scores where match_id = '2498543') = (6 + 5 + 2 + 2 + 10) * 2,
+  'exact prediction on the Banker scores 25 x2 = 50');
+select pg_temp.check((select total_pts from public.prediction_scores where match_id = '2498544') = 6,
+  'right result only scores 6');
+select pg_temp.check((select total_points from public.leaderboard where team_name = 'Daines XV') = 56,
+  'leaderboard totals predictions only');
 
 -- The ingest transform: a TheSportsDB round payload lands in core, idempotently
 insert into raw.feed_payloads (source, endpoint, params, payload) values ('thesportsdb', 'eventsround.php', '{"r":1}',

@@ -52,7 +52,14 @@ function Predict() {
     const { error } = await supabase.from("predictions").upsert(
       { entry_id: entry!.id, match_id: matchId, home_score: Number(h), away_score: Number(a) });
     if (error) setMsg(error.message);
-    else setPreds((p) => new Map(p).set(matchId, { entry_id: entry!.id, match_id: matchId, home_score: +h, away_score: +a }));
+    else setPreds((p) => new Map(p).set(matchId, { entry_id: entry!.id, match_id: matchId, home_score: +h, away_score: +a, is_banker: p.get(matchId)?.is_banker ?? false }));
+  }
+
+  async function back(matchId: string) {
+    setMsg(null);
+    const { error } = await supabase.from("predictions").update({ is_banker: true })
+      .eq("entry_id", entry!.id).eq("match_id", matchId);
+    if (error) setMsg(error.message); else await load();
   }
 
   async function lockIn() {
@@ -62,6 +69,7 @@ function Predict() {
   }
 
   const filled = ms.filter((m) => preds.has(m.id)).length;
+  const hasBanker = ms.some((m) => preds.get(m.id)?.is_banker);
 
   return (
     <>
@@ -70,14 +78,19 @@ function Predict() {
         <h2>Round {round} {done && <span className="badge win">locked</span>}</h2>
         <p className="sub">
           {done ? <>You scored <strong>{total}</strong> this round.</>
-            : <>Call each scoreline. 6 for the right result, 5 more for the exact margin, 2 for each side within 3 points, and 10 for the exact score.</>}
+            : <>Call each scoreline. 6 for the right result, 5 more for the exact margin, 2 for each side within 3 points, and 10 for the exact score. Back one match as your <strong>Banker</strong> and it counts double.</>}
         </p>
         {ms.map((m) => {
           const h = teams.get(m.home_team_id)!, a = teams.get(m.away_team_id)!;
           const d = draft[m.id] ?? ["", ""];
+          const p = preds.get(m.id);
           return (
-            <div key={m.id} className="match">
-              <div className="mhead"><span>{kickoff(m.kickoff_at)}</span><span>{m.venue}</span></div>
+            <div key={m.id} className={p?.is_banker ? "match banker" : "match"}>
+              <div className="mhead">
+                <span>{kickoff(m.kickoff_at)} · {m.venue}</span>
+                {p?.is_banker ? <span className="bank on">Banker ×2</span>
+                  : !done && p ? <button type="button" className="bank" onClick={() => back(m.id)}>Make Banker</button> : null}
+              </div>
               <div className="pred">
                 <span className="pteam"><Crest team={h} /><strong>{h.display_name}</strong></span>
                 <input className="pbox" inputMode="numeric" type="number" min={0} max={150} disabled={done} value={d[0]}
@@ -99,9 +112,9 @@ function Predict() {
         {msg && <p className="small" style={{ color: "var(--danger)" }}>{msg}</p>}
         {!done && season.is_replay && (
           <>
-            <p className="small muted">Locking in a round locks your union picks and your predictions for it together.</p>
-            <button type="button" disabled={filled < ms.length} onClick={lockIn}>
-              {filled < ms.length ? `Call ${ms.length - filled} more` : `Lock in round ${round}`}
+            <p className="small muted">Locking in a round can't be undone. Then you see how it scored.</p>
+            <button type="button" disabled={filled < ms.length || !hasBanker} onClick={lockIn}>
+              {filled < ms.length ? `Call ${ms.length - filled} more` : !hasBanker ? "Pick your Banker" : `Lock in round ${round}`}
             </button>
           </>
         )}

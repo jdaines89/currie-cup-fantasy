@@ -7,8 +7,8 @@ the one before it:
 |---|---|---|---|
 | raw | `raw.feed_payloads` | Every feed response, verbatim, append-only, deduplicated by hash | Ingest (pg_cron + pg_net) |
 | core | `seasons`, `teams`, `matches`, `players`, `player_match_stats`, `season_bonus_points` | Clean typed rows, each traceable to its raw payload (`matches.raw_id`) | `core_load_events()` from raw |
-| league | `members`, `entries`, `pool_picks`, `predictions`, `squad_picks`, `round_locks` | What members do | Members, own rows only |
-| marts | `standings`, `pool_pick_scores`, `prediction_scores`, `round_totals`, `leaderboard` | Views, never stale, no rescore job | Nobody: computed |
+| league | `members`, `entries`, `predictions` (with `is_banker`), `pool_picks` (retired, unread), `squad_picks`, `round_locks` | What members do | Members, own rows only |
+| marts | `standings`, `prediction_scores`, `leaderboard` | Views, never stale, no rescore job | Nobody: computed |
 
 **Access.** Invite-only. Sending an invite from Supabase (Authentication >
 Users > Invite user) creates the account, and a trigger makes it a member.

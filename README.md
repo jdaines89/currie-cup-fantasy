@@ -4,7 +4,7 @@ An invite-only fantasy league for the Currie Cup, running on real results and
 free tiers only.
 
 - **App:** Next.js 15 (React, TypeScript), exported as a static site and served
-  from GitHub Pages. Screens: Union Pool, score predictions, fixtures, the log
+  from GitHub Pages. Screens: score predictions (with a double-points Banker each round), fixtures, the log
   and the leaderboard. Each union shows its official badge and jersey colour.
 - **Data:** Supabase (Postgres + Auth). Four layers, raw feed payloads to core
   tables to league tables to scoring views, with every rule (four picks, one

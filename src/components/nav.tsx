@@ -7,7 +7,6 @@ import { supabase } from "@/lib/supabase";
 
 const TABS = [
   ["/", "Home"],
-  ["/pool/", "Union Pool"],
   ["/predict/", "Predict"],
   ["/fixtures/", "Fixtures"],
   ["/standings/", "Log"],

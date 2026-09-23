@@ -3,6 +3,7 @@ import "./globals.css";
 import { AuthGate } from "@/components/auth-gate";
 import { LeagueProvider } from "@/components/league";
 import { Nav } from "@/components/nav";
+import { Brand } from "@/components/logo";
 
 export const metadata: Metadata = {
   title: "Currie Cup Fantasy",
@@ -15,8 +16,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <header className="top">
           <div className="shell">
-            <div className="brand">Currie Cup <span>Fantasy</span></div>
-            <div className="tagline">Eight unions, real results, invite only.</div>
+            <Brand />
             <Nav />
           </div>
         </header>

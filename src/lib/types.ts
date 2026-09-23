@@ -11,8 +11,7 @@ export interface Match {
 }
 export interface Member { user_id: string; email: string; display_name: string; is_admin: boolean }
 export interface Entry { id: number; user_id: string; season: string; team_name: string }
-export interface PoolPick { entry_id: number; round: number; team_id: string; is_captain: boolean }
-export interface Prediction { entry_id: number; match_id: string; home_score: number; away_score: number }
+export interface Prediction { entry_id: number; match_id: string; home_score: number; away_score: number; is_banker: boolean }
 export interface StandingRow {
   team_id: string; played: number; won: number; drawn: number; lost: number;
   points_for: number; points_against: number; diff: number;
@@ -20,5 +19,5 @@ export interface StandingRow {
 }
 export interface LeaderRow {
   entry_id: number; team_name: string; manager: string;
-  pool_points: number; predict_points: number; total_points: number; rounds_scored: number;
+  total_points: number; right_results: number; exact_scores: number; rounds_scored: number;
 }

@@ -19,13 +19,13 @@ export default function LeaderboardPage() {
       <p className="sub">Everyone in the league. Only rounds that are locked in count.</p>
       {rows.length === 0 ? <p className="muted">No teams yet.</p> : (
         <table>
-          <thead><tr><th>#</th><th>Team</th><th className="num">Pool</th><th className="num">Predict</th><th className="num">Total</th></tr></thead>
+          <thead><tr><th>#</th><th>Team</th><th className="num">Results</th><th className="num">Exact</th><th className="num">Total</th></tr></thead>
           <tbody>
             {rows.map((r, i) => (
               <tr key={r.entry_id} className={r.entry_id === entry?.id ? "me" : ""}>
                 <td className="muted">{i + 1}</td>
                 <td><strong>{r.team_name}</strong><div className="small muted">{r.manager} · {r.rounds_scored} rounds</div></td>
-                <td className="num">{r.pool_points}</td><td className="num">{r.predict_points}</td>
+                <td className="num">{r.right_results}</td><td className="num">{r.exact_scores}</td>
                 <td className="num"><strong>{r.total_points}</strong></td>
               </tr>
             ))}
