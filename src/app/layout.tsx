@@ -6,8 +6,8 @@ import { Nav } from "@/components/nav";
 import { Brand } from "@/components/logo";
 
 export const metadata: Metadata = {
-  title: "Currie Cup Fantasy",
-  description: "An invite-only Currie Cup fantasy league on real results.",
+  title: "Scrumline",
+  description: "Invite-only rugby prediction leagues on real results: Currie Cup, URC and more.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

@@ -19,8 +19,8 @@ export function Brand() {
     <div className="brand">
       <BallMark />
       <div>
-        <div className="wordmark">Currie Cup</div>
-        <div className="subword">Fantasy League</div>
+        <div className="wordmark">Scrumline</div>
+        <div className="subword">Rugby Prediction Leagues</div>
       </div>
     </div>
   );

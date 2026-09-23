@@ -1,4 +1,4 @@
-# Currie Cup Fantasy
+# Scrumline
 
 An invite-only fantasy league for the Currie Cup, running on real results and
 free tiers only.

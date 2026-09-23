@@ -36,7 +36,7 @@ export default function PoolsPage() {
   }
 
   async function share(id: number, joinCode: string, poolName: string) {
-    const text = `Join my ${season.name} pool "${poolName}" on Currie Cup Fantasy with code ${joinCode}: ${window.location.origin}${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/pools/`;
+    const text = `Join my ${season.name} pool "${poolName}" on Scrumline with code ${joinCode}: ${window.location.origin}${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/pools/`;
     try {
       if (navigator.share) await navigator.share({ text });
       else await navigator.clipboard.writeText(text);
