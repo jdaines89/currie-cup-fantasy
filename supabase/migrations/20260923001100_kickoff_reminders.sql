@@ -66,7 +66,7 @@ create table notify.settings (
   value text not null
 );
 insert into notify.settings (key, value) values
-  ('sender_email', 'sender@example.com'),
+  ('sender_email', 'sender@example.com'),  -- the real sender is set in the live database, not here
   ('sender_name',  'Currie Cup Fantasy'),
   ('app_url',      'https://jdaines89.github.io/currie-cup-fantasy/predict/');
 
