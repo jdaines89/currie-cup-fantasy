@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Avatar } from "@/components/avatar";
+import { useLeague } from "@/components/league";
 import { supabase } from "@/lib/supabase";
 import type { Member, School } from "@/lib/types";
 
@@ -47,16 +48,19 @@ export function MySchools({ me, members, onMessage }: { me: Member; members: Mem
     setGiven(new Set((v.data ?? []).map((x) => `${x.member_id}:${x.stage}:${x.emis}`)));
   }, [me.user_id]);
   useEffect(() => { load(); }, [load]);
+  // Saving a school changes which school pools you're in.
+  const { reloadPools } = useLeague();
+  const afterSave = useCallback(async () => { await load(); await reloadPools(); }, [load, reloadPools]);
 
   return (
     <div className="stack schools">
       {(["primary", "high"] as Stage[]).map((st) => (
         <SchoolRow key={st} stage={st} me={me} saved={saved?.find((s) => s.stage === st)} loading={!saved}
           mates={mates.filter((x) => x.stage === st)} members={members} given={given}
-          onSaved={load} onMessage={onMessage} />
+          onSaved={afterSave} onMessage={onMessage} />
       ))}
       <p className="small muted">
-        Your mates in the league can see these. Each one is fixed {OPEN_DAYS} days after you first save it,
+        You&apos;re in each school&apos;s pool automatically. Your mates in the league can see these. Each one is fixed {OPEN_DAYS} days after you first save it,
         and counts for the school once {NEEDED} schoolmates confirm you.
       </p>
     </div>

@@ -476,4 +476,34 @@ exception when insufficient_privilege then raise notice 'ok: signed-out visitors
 end $$;
 reset role;
 
+-- School pools: saving a school puts you in its pool, for every tournament
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000a');
+select pg_temp.check((select count(*) from public.pools where school_emis = '200100823' and school_stage = 'high')
+                     = (select count(*) from public.seasons), 'a school pool per tournament');
+select pg_temp.check((select name from public.pools where school_emis = '200100823' limit 1) = 'Victoria Park High School', 'named after the school');
+select pg_temp.check((select count(distinct pm.user_id) from public.pool_members pm join public.pools p on p.id = pm.pool_id
+                      where p.school_emis = '200100823') = 2, 'schoolmates share the pool');
+delete from public.pool_members where pool_id in (select id from public.pools where school_emis is not null);
+select pg_temp.check((select count(*) from public.pool_members pm join public.pools p on p.id = pm.pool_id
+                      where p.school_emis is not null and pm.user_id = auth.uid()) > 0, 'nobody leaves a school pool by hand');
+do $$ begin
+  insert into public.pools (season, name, school_emis, school_stage) values ('2026', 'Fake', '200100120', 'primary');
+  raise exception 'FAILED: made a school pool by hand';
+exception when insufficient_privilege then raise notice 'ok: only the app makes school pools';
+end $$;
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000c');
+select pg_temp.check((select count(*) from public.pools where school_emis = '200100823') = 0, 'other schools can''t see the pool');
+do $$ declare c text; begin
+  reset role; select join_code into c from public.pools where school_emis = '200100823' limit 1;
+  perform pg_temp.as_user('00000000-0000-0000-0000-00000000000c');
+  perform public.join_pool(c);
+  raise exception 'FAILED: joined a school pool by code';
+exception when raise_exception then raise notice 'ok: no joining a school pool by code';
+end $$;
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000b');
+delete from public.member_schools where user_id = auth.uid() and stage = 'high';
+select pg_temp.check((select count(*) from public.pool_members pm join public.pools p on p.id = pm.pool_id
+                      where p.school_emis = '200100823' and pm.user_id = auth.uid()) = 0, 'removing your school takes you out of its pool');
+reset role;
+
 \echo ALL CHECKS PASSED
