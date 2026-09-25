@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useLeague } from "@/components/league";
+import { readCache, writeCache } from "@/lib/cache";
 import { supabase } from "@/lib/supabase";
 import type { LeaderRow } from "@/lib/types";
 
@@ -20,7 +21,7 @@ interface Line { label: string; text: string }
  */
 export function RoundRecap({ rows }: { rows: LeaderRow[] }) {
   const { matches, teams, pool, season } = useLeague();
-  const [scored, setScored] = useState<Scored[]>([]);
+  const [scored, setScored] = useState<Scored[]>(() => readCache<Scored[]>(`recap:${pool!.id}`) ?? []);
   const [note, setNote] = useState<string | null>(null);
   const entries = rows.filter((r) => r.entry_id !== null);
   const ids = entries.map((r) => r.entry_id!).join(",");
@@ -30,8 +31,8 @@ export function RoundRecap({ rows }: { rows: LeaderRow[] }) {
     supabase.from("prediction_scores")
       .select("entry_id, round, match_id, total_pts, is_banker, pred_home, pred_away, real_home, real_away")
       .eq("season", season.id).in("entry_id", ids.split(",").map(Number))
-      .then(({ data }) => setScored((data ?? []) as Scored[]));
-  }, [ids, season.id]);
+      .then(({ data }) => { const r = (data ?? []) as Scored[]; writeCache(`recap:${pool!.id}`, r); setScored(r); });
+  }, [ids, season.id, pool]);
 
   const recap = useMemo(() => {
     if (!scored.length || entries.length < 2) return null;

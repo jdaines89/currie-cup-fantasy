@@ -1,5 +1,6 @@
 "use client";
 
+import { readCache, writeCache } from "@/lib/cache";
 import { createContext, useCallback, useContext, useEffect, useState, type FormEvent, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -32,6 +33,14 @@ export function useLeague(): League {
   return v;
 }
 
+interface Base { seasons: Season[]; competitions: Map<string, Competition>; teams: Map<string, Team>; me: Member; members: Member[] }
+interface CachedBase { seasons: Season[]; competitions: Competition[]; teams: Team[]; me: Member; members: Member[] }
+interface SeasonData { matches: Match[]; entry: Entry | null; pools: Pool[] }
+
+function hydrate(b: CachedBase): Base {
+  return { ...b, competitions: new Map(b.competitions.map((c) => [c.id, c])), teams: new Map(b.teams.map((t) => [t.id, t])) };
+}
+
 function remember(key: string, value?: string): string | null {
   try {
     if (value !== undefined) localStorage.setItem(key, value);
@@ -50,18 +59,31 @@ function defaultSeason(seasons: Season[]): Season {
  * entry for it, and the pools you're in for it.
  */
 export function LeagueProvider({ children }: { children: ReactNode }) {
-  const [base, setBase] = useState<{
-    seasons: Season[]; competitions: Map<string, Competition>; teams: Map<string, Team>; me: Member; members: Member[];
-  } | null>(null);
+  const [base, setBase] = useState<Base | null>(null);
   const [seasonId, setSeasonId] = useState<string | null>(null);
-  const [data, setData] = useState<{ matches: Match[]; entry: Entry | null; pools: Pool[] } | null>(null);
+  const [data, setData] = useState<SeasonData | null>(null);
   const [poolId, setPoolId] = useState<number | null>(null);
+
+  // Draw from last visit's copy straight away; the fetches below replace it.
+  useEffect(() => {
+    const b = readCache<CachedBase>("base");
+    if (!b) return;
+    setBase(hydrate(b));
+    const saved = remember("season");
+    const sid = b.seasons.some((s) => s.id === saved) ? saved! : defaultSeason(b.seasons).id;
+    {
+      setSeasonId(sid);
+      const d = readCache<SeasonData>(`season:${sid}`);
+      if (d) { setData(d); const p = Number(remember(`pool:${sid}`)); setPoolId(d.pools.some((x) => x.id === p) ? p : d.pools[0]?.id ?? null); }
+    }
+  }, []);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
-      const { data: user } = await supabase.auth.getUser();
-      const uid = user.user?.id;
+      // The session is already on this device, so no round trip is needed to know who you are.
+      const { data: sess } = await supabase.auth.getSession();
+      const uid = sess.session?.user.id;
       const [seasons, comps, teams, members] = await Promise.all([
         supabase.from("seasons").select("*").order("starts_on", { ascending: false, nullsFirst: false }),
         supabase.from("competitions").select("*"),
@@ -73,11 +95,10 @@ export function LeagueProvider({ children }: { children: ReactNode }) {
       const ss = (seasons.data ?? []) as Season[];
       if (!me) { setError("Your account isn't a member of this league. Ask Justin for an invite."); return; }
       if (!ss.length) { setError("No season has been loaded yet."); return; }
-      setBase({
-        seasons: ss, me, members: everyone,
-        competitions: new Map(((comps.data ?? []) as Competition[]).map((c) => [c.id, c])),
-        teams: new Map(((teams.data ?? []) as Team[]).map((t) => [t.id, t])),
-      });
+      const fresh: CachedBase = { seasons: ss, me, members: everyone,
+        competitions: (comps.data ?? []) as Competition[], teams: (teams.data ?? []) as Team[] };
+      writeCache("base", fresh);
+      setBase(hydrate(fresh));
       const saved = remember("season");
       setSeasonId(ss.some((s) => s.id === saved) ? saved : defaultSeason(ss).id);
     })();
@@ -91,7 +112,9 @@ export function LeagueProvider({ children }: { children: ReactNode }) {
       supabase.from("pools").select("*").eq("season", seasonId).order("created_at"),
     ]);
     const ps = (pools.data ?? []) as Pool[];
-    setData({ matches: (matches.data ?? []) as Match[], entry: (entries.data?.[0] as Entry | undefined) ?? null, pools: ps });
+    const fresh: SeasonData = { matches: (matches.data ?? []) as Match[], entry: (entries.data?.[0] as Entry | undefined) ?? null, pools: ps };
+    writeCache(`season:${seasonId}`, fresh);
+    setData(fresh);
     const saved = Number(remember(`pool:${seasonId}`));
     setPoolId(ps.some((p) => p.id === saved) ? saved : ps[0]?.id ?? null);
   }, [base, seasonId]);
@@ -103,7 +126,7 @@ export function LeagueProvider({ children }: { children: ReactNode }) {
   const season = base.seasons.find((s) => s.id === seasonId)!;
   const value: League = {
     ...base, season,
-    setSeason: (id) => { remember("season", id); setData(null); setSeasonId(id); },
+    setSeason: (id) => { remember("season", id); setData(readCache<SeasonData>(`season:${id}`) ?? null); setSeasonId(id); },
     pools: data.pools,
     pool: data.pools.find((p) => p.id === poolId) ?? null,
     setPool: (id) => { remember(`pool:${seasonId}`, String(id)); setPoolId(id); },

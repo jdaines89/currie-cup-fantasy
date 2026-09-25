@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { NeedsEntry, useLeague } from "@/components/league";
 import { RoundPicker } from "@/components/round-picker";
 import { Crowd, type CrowdRow } from "@/components/crowd";
@@ -8,6 +8,7 @@ import { Crest } from "@/components/team";
 import { kickoff } from "@/lib/format";
 import { isRugbyScore, scoreInput } from "@/lib/rugby";
 import { firstOpenRound, lockRound, useRoundLocks } from "@/lib/rounds";
+import { readCache, writeCache } from "@/lib/cache";
 import { supabase } from "@/lib/supabase";
 import type { Prediction } from "@/lib/types";
 
@@ -27,6 +28,9 @@ const PARTS = [
 const bad = (v: string) => v !== "" && !isRugbyScore(Number(v));
 
 interface MateCall extends Prediction { name: string; pts: number | null }
+
+// Everything one round of Predict shows, as kept on the device between visits.
+interface RoundBundle { preds: Prediction[]; scores: PredScore[]; mates: MateCall[]; locks: string[]; crowd: CrowdRow[] }
 
 function Breakdown({ s }: { s: PredScore }) {
   return (
@@ -57,12 +61,36 @@ function Predict() {
   const [myLocks, setMyLocks] = useState<Set<string>>(new Set());
   const [crowd, setCrowd] = useState<Map<string, CrowdRow>>(new Map());
   const [msg, setMsg] = useState<string | null>(null);
+  // Which round's data is on screen (cached or fresh); until then the cards show placeholders.
+  const [ready, setReady] = useState<string | null>(null);
+  // Boxes typed into since the round opened, so a fresh copy landing late never overwrites them.
+  const touched = useRef<Set<string>>(new Set());
+  const shown = useRef<string | null>(null);
 
   useEffect(() => { if (round === null && rounds.length) setRound(firstOpenRound(rounds, isLocked)); }, [round, rounds, isLocked]);
 
   const ms = matches.filter((m) => m.round === round);
+  const apply = useCallback((b: RoundBundle) => {
+    setCrowd(new Map(b.crowd.map((x) => [x.match_id, x])));
+    setMyLocks(new Set(b.locks));
+    setMates(b.mates);
+    const map = new Map(b.preds.map((x) => [x.match_id, x]));
+    setPreds(map);
+    setDraft((d) => {
+      const next: Record<string, [string, string]> = Object.fromEntries([...map].map(([k, v]) => [k, [String(v.home_score), String(v.away_score)]]));
+      for (const k of touched.current) if (d[k]) next[k] = d[k];
+      return next;
+    });
+    setScores(new Map(b.scores.map((x) => [x.match_id, x])));
+  }, []);
+
   const load = useCallback(async () => {
     if (round === null) return;
+    const key = `predict:${entry!.id}:${round}`;
+    const cached = readCache<RoundBundle>(key);
+    // Only on first opening a round: a reload after a save must not flash back to the old copy.
+    if (cached && shown.current !== key) { apply(cached); setReady(key); }
+    shown.current = key;
     const ids = matches.filter((m) => m.round === round).map((m) => m.id);
     const [p, s, theirs, theirScores, entries, ml, cr] = await Promise.all([
       supabase.from("predictions").select("*").eq("entry_id", entry!.id).in("match_id", ids),
@@ -75,20 +103,24 @@ function Predict() {
       // Every player's calls as totals, only for matches your own call can no longer change.
       supabase.rpc("match_crowd", { p_season: season.id }),
     ]);
-    setCrowd(new Map(((cr.data ?? []) as CrowdRow[]).map((x) => [x.match_id, x])));
-    setMyLocks(new Set((ml.data ?? []).map((r: { match_id: string }) => r.match_id)));
     const owner = new Map(((entries.data ?? []) as { id: number; user_id: string }[]).map((e) => [e.id, e.user_id]));
     const pts = new Map(((theirScores.data ?? []) as { entry_id: number; match_id: string; total_pts: number }[])
       .map((x) => [`${x.entry_id}:${x.match_id}`, x.total_pts]));
-    setMates(((theirs.data ?? []) as Prediction[]).map((x) => ({
-      ...x, name: members.find((m) => m.user_id === owner.get(x.entry_id))?.display_name ?? "A mate",
-      pts: pts.get(`${x.entry_id}:${x.match_id}`) ?? null,
-    })).sort((a, b) => a.name.localeCompare(b.name)));
-    const map = new Map(((p.data ?? []) as Prediction[]).map((x) => [x.match_id, x]));
-    setPreds(map);
-    setDraft(Object.fromEntries([...map].map(([k, v]) => [k, [String(v.home_score), String(v.away_score)]])));
-    setScores(new Map(((s.data ?? []) as PredScore[]).map((x) => [x.match_id, x])));
-  }, [entry, round, matches, season.id, members]);
+    const fresh: RoundBundle = {
+      crowd: (cr.data ?? []) as CrowdRow[],
+      locks: (ml.data ?? []).map((r: { match_id: string }) => r.match_id),
+      mates: ((theirs.data ?? []) as Prediction[]).map((x) => ({
+        ...x, name: members.find((m) => m.user_id === owner.get(x.entry_id))?.display_name ?? "A mate",
+        pts: pts.get(`${x.entry_id}:${x.match_id}`) ?? null,
+      })).sort((a, b) => a.name.localeCompare(b.name)),
+      preds: (p.data ?? []) as Prediction[],
+      scores: (s.data ?? []) as PredScore[],
+    };
+    writeCache(key, fresh);
+    apply(fresh);
+    setReady(key);
+  }, [entry, round, matches, season.id, members, apply]);
+  useEffect(() => { touched.current = new Set(); }, [round]);
   useEffect(() => { load(); }, [load]);
 
   if (round === null) return null;
@@ -99,6 +131,7 @@ function Predict() {
 
   async function save(matchId: string, rawH: string, rawA: string) {
     const h = scoreInput(rawH), a = scoreInput(rawA);
+    touched.current.add(matchId);
     setDraft((d) => ({ ...d, [matchId]: [h, a] }));
     if (h === "" || a === "" || !isRugbyScore(+h) || !isRugbyScore(+a)) return;
     setMsg(null);
@@ -176,7 +209,7 @@ function Predict() {
             6 for the right result, 5 more for the exact margin, 2 for each side within 3 points, and 5 more for the exact score. Back one match as your <strong>Banker</strong> and it counts double.
           </details>
         )}
-        {ms.map((m) => {
+        {ready !== `predict:${entry!.id}:${round}` ? ms.map((m) => <div key={m.id} className="match skeleton" style={{ height: 150 }} />) : ms.map((m) => {
           const h = teams.get(m.home_team_id)!, a = teams.get(m.away_team_id)!;
           const d = draft[m.id] ?? ["", ""];
           const p = preds.get(m.id);

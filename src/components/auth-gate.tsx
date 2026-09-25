@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import type { Session } from "@supabase/supabase-js";
+import { clearCache } from "@/lib/cache";
 import { arrivedVia, configured, supabase } from "@/lib/supabase";
 
 /**
@@ -17,6 +18,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
     const { data } = supabase.auth.onAuthStateChange((event, s) => {
       setSession(s);
+      if (event === "SIGNED_OUT") clearCache();
       if (event === "PASSWORD_RECOVERY") setMustSetPassword(true);
     });
     return () => data.subscription.unsubscribe();

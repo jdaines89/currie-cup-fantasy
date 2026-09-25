@@ -41,12 +41,12 @@ export function Crowd({ c, home, away }: { c: CrowdRow; home?: Team; away?: Team
             {seg("d", d, "Draw")}
             {seg("a", a, away?.short_name ?? "Away")}
           </div>
-          <p className="small muted" style={{ margin: "6px 0 0" }}>
+          <p className="small muted" style={{ marginTop: 6, marginBottom: 0 }}>
             {thin.map(([n, p]) => `${n} ${p}% · `).join("")}Average <strong className="txt">{Math.round(c.avg_home!)}–{Math.round(c.avg_away!)}</strong>
           </p>
         </>
       ) : (
-        <p className="small muted" style={{ margin: "4px 0 0" }}>The split shows once 3 players have locked a call.</p>
+        <p className="small muted" style={{ marginTop: 4, marginBottom: 0 }}>The split shows once 3 players have locked a call.</p>
       )}
     </div>
   );
