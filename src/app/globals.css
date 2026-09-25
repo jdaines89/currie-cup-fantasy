@@ -378,3 +378,8 @@ header.top .shell { position: relative; }
 /* The crowd reads as one centred block, not a bar stretched across a wide screen. */
 .crowd > * { max-width: 460px; margin-left: auto; margin-right: auto; }
 .crowd p { text-align: center; }
+
+/* Round at a glance on Predict: the swing games between you and your pool. */
+.digest { margin: 10px 0 14px; }
+.digest dt .pchip { margin-left: 6px; text-transform: none; letter-spacing: 0; }
+.digeststand { margin: 6px 0 0; font-size: 14px; }
