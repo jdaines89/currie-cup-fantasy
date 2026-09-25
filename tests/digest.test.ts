@@ -30,10 +30,10 @@ describe("buildDigest", () => {
 
   it("leads with your lone calls, then the splits", () => {
     expect(d.swings.map((s) => [s.match_id, s.kind])).toEqual([["a", "lone"], ["b", "split"]]);
-    expect(d.swings[0].text).toBe("Only you have Lions. Both mates went the other way.");
+    expect(d.swings[0].text).toBe("Just you on Lions · Reeves and Christo on Sharks");
     expect(d.swings[0].bankers).toEqual(["Your Banker"]);
     expect(d.swings[0].counts).toEqual({ home: 1, draw: 0, away: 2 });
-    expect(d.swings[1].text).toBe("You and Reeves have Bulls. Christo doesn't.");
+    expect(d.swings[1].text).toBe("You and Reeves on Bulls · Christo on Stormers");
   });
 
   it("skips finished games, counts the agreed ones and what's at stake", () => {
@@ -62,9 +62,9 @@ describe("buildDigest", () => {
     ]);
     const x = buildDigest({ myEntry: 1, mine, mates: big, matches, table: [], poolName: null })!;
     expect(x.swings.map((s) => [s.match_id, s.kind])).toEqual([["a", "against"], ["c", "split"]]);
-    expect(x.swings[0].text).toBe("You, Kim and Max have Lions. 7 don't.");
+    expect(x.swings[0].text).toBe("You, Kim and Max on Lions · 7 on Sharks");
     expect(x.swings[0].bankers).toEqual(["Your Banker", "Reeves' Banker"]);
-    expect(x.swings[1].text).toBe("You and 5 mates have Griquas. 4 don't.");
+    expect(x.swings[1].text).toBe("You and 5 mates on Griquas · 4 on Pumas");
     expect(x.agreed).toBe(1);
   });
 
