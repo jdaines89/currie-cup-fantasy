@@ -18,7 +18,7 @@ export type Kind = "lone" | "against" | "split" | "with";
 export interface SwingGame {
   match_id: string;
   kind: Kind;
-  label: string;                       // "Lone wolf", "Against the pool", ...
+  label: string;                       // "Lone call", "Against the pool", or "" for an ordinary split
   mine: Side;
   counts: Record<Side, number>;        // the whole pool's calls, you included
   text: string;                        // one line on who's where
@@ -45,7 +45,7 @@ const ord = (n: number) => {
   return `${n}${t >= 11 && t <= 13 ? "th" : u === 1 ? "st" : u === 2 ? "nd" : u === 3 ? "rd" : "th"}`;
 };
 const RANK: Record<Kind, number> = { lone: 4, against: 3, split: 2, with: 1 };
-const LABEL: Record<Kind, string> = { lone: "Lone wolf", against: "Against the pool", split: "Pool split", with: "With the pool" };
+const LABEL: Record<Kind, string> = { lone: "Lone call", against: "Against the pool", split: "", with: "" };
 
 export function buildDigest(opts: {
   myEntry: number;
@@ -74,18 +74,22 @@ export function buildDigest(opts: {
     const kind: Kind = withMe.length === 0 ? "lone"
       : us < them && Math.abs(us - them) > Math.max(1, Math.round(theirs.length / 5)) ? "against"
       : Math.abs(us - them) <= Math.max(1, Math.round(theirs.length / 5)) ? "split" : "with";
-    const pick = my === "home" ? m.home : my === "away" ? m.away : "the draw";
-    // Names while they fit on a line, counts after that.
-    const group = (xs: DigestMate[]) => (xs.length <= 2 ? xs.map((c) => c.name).join(" and ") : plural(xs.length, "mate"));
-    const text = withMe.length === 0
-      ? `Only you have ${pick}. ${them === 1 ? against[0].name : them === 2 ? "Both mates" : `All ${them} mates`} went the other way.`
-      : `You${withMe.length === 2 ? `, ${group(withMe)}` : ` and ${group(withMe)}`} have ${pick}. ${
-          them <= 2 ? `${group(against)} ${them === 1 ? "doesn't" : "don't"}.` : `${them} don't.`}`;
+    const name = (x: Side) => (x === "home" ? m.home : x === "away" ? m.away : "the draw");
+    // Names while they fit, counts after that: "You and Max on Cardiff · 8 on Scarlets".
+    const group = (xs: DigestMate[]) => (xs.length <= 2 ? xs.map((c) => c.name).join(" and ") : String(xs.length));
+    const yours = withMe.length === 0 ? `Just you on ${name(my)}`
+      : withMe.length === 1 ? `You and ${withMe[0].name} on ${name(my)}`
+      : withMe.length === 2 ? `You, ${withMe[0].name} and ${withMe[1].name} on ${name(my)}`
+      : `You and ${withMe.length} mates on ${name(my)}`;
+    const others = (["home", "draw", "away"] as Side[]).filter((x) => x !== my)
+      .map((x) => against.filter((c) => side(c) === x)).filter((xs) => xs.length)
+      .map((xs) => `${group(xs)} on ${name(side(xs[0]))}`);
+    const text = [yours, ...others].join(" · ");
     const theirBankers = against.filter((c) => c.is_banker);
     const bankers = [
       ...(me.is_banker ? ["Your Banker"] : []),
       ...(theirBankers.length === 1 ? [`${poss(theirBankers[0].name)} Banker`]
-        : theirBankers.length ? [`${theirBankers.length} Bankers against you`] : []),
+        : theirBankers.length ? [`${theirBankers.length} Bankers against`] : []),
     ];
     // The 6 for the right result is yours and not theirs, doubled on your Banker.
     games.push({ match_id: m.id, kind, label: LABEL[kind], mine: my, counts, text, bankers, stake: 6 * (me.is_banker ? 2 : 1) });
