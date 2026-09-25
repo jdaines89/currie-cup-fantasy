@@ -381,5 +381,17 @@ header.top .shell { position: relative; }
 
 /* Round at a glance on Predict: the swing games between you and your pool. */
 .digest { margin: 10px 0 14px; }
-.digest dt .pchip { margin-left: 6px; text-transform: none; letter-spacing: 0; }
-.digeststand { margin: 6px 0 0; font-size: 14px; }
+.digesthead { margin: 6px 0 0; font-size: 15px; font-weight: 600; }
+.digeststats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 10px 0 4px; text-align: center; }
+.digeststats div { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 6px 4px; }
+.digeststats strong { display: block; font-size: 22px; color: var(--accent); font-variant-numeric: tabular-nums; }
+.digeststats span { font-size: 11px; color: var(--muted); }
+.swing { border-top: 1px solid var(--line); margin-top: 10px; padding-top: 10px; }
+.swinghead { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 14px; }
+.swinghead .team { gap: 6px; }
+.swingtag { font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; border-radius: 999px; padding: 2px 8px; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
+.swingtag.lone { color: #f2b544; border-color: #6b5220; }
+.swingtag.against { color: var(--accent); border-color: var(--accent-dim); }
+.digestbar span.me { box-shadow: inset 0 0 0 2px #fff; }
+.digestbar em { font-style: normal; font-size: 10px; background: #fff; color: #07140e; border-radius: 4px; padding: 0 4px; margin-left: 5px; }
+.swing .pchip { margin-left: 6px; }

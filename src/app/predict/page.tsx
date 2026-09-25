@@ -225,7 +225,10 @@ function Predict() {
           {done ? <>You scored <strong>{total}</strong> this round.</>
             : <>{filled} of {ms.length} called{hasBanker ? ", Banker picked" : ", no Banker yet"}.</>}
         </p>
-        {digest && <RoundDigest d={digest} round={round} open={unlockedCalls} />}
+        {digest && <RoundDigest d={digest} round={round} open={unlockedCalls} teamsOf={(id) => {
+          const m = ms.find((x) => x.id === id)!;
+          return [teams.get(m.home_team_id)!, teams.get(m.away_team_id)!];
+        }} />}
         {!done && (
           <details className="rules">
             <summary>How scoring works</summary>

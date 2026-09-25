@@ -28,33 +28,44 @@ const table = [
 describe("buildDigest", () => {
   const d = buildDigest({ myEntry: 1, mine, mates, matches, table, poolName: "The Originals" })!;
 
-  it("leads with the games where you split, lone calls first", () => {
-    expect(d.swings.map((s) => s.match_id)).toEqual(["a", "b"]);
-    expect(d.swings[0].text).toBe("You're on your own with Lions by 7. Both mates went Sharks.");
-    expect(d.swings[0].tags).toEqual(["Your Banker"]);
-    expect(d.swings[1].text).toBe("You've got Bulls by 7. Christo went the other way.");
-    expect(d.swings[1].tags).toEqual(["Reeves' Banker"]);
+  it("leads with your lone calls, then the splits", () => {
+    expect(d.swings.map((s) => [s.match_id, s.kind])).toEqual([["a", "lone"], ["b", "split"]]);
+    expect(d.swings[0].text).toBe("Only you have Lions. Both mates went the other way.");
+    expect(d.swings[0].bankers).toEqual(["Your Banker"]);
+    expect(d.swings[0].counts).toEqual({ home: 1, draw: 0, away: 2 });
+    expect(d.swings[1].text).toBe("You and Reeves have Bulls. Christo doesn't.");
   });
 
-  it("skips finished games and counts the agreed ones", () => {
-    expect(d.swings.some((s) => s.match_id === "d")).toBe(false);
+  it("skips finished games, counts the agreed ones and what's at stake", () => {
     expect(d.agreed).toBe(1);
+    expect(d.stake).toBe(18);
   });
 
-  it("says where you stand and who you're chasing", () => {
-    expect(d.standing).toBe("You're 2nd in The Originals on 40 pts, 5 behind Reeves.");
-    expect(d.rival).toBe("You and Reeves split on 1 of 3 games, so this round could swing it.");
+  it("says where you stand once there are points", () => {
+    expect(d.standing).toBe("You're 2nd of 3 in The Originals on 40 pts, 5 off the top.");
+    expect(d.headline).toBe("1 bold call this round. Get it right and you pull away.");
   });
 
-  it("falls back to margins when everyone agrees", () => {
-    const x = buildDigest({ myEntry: 1, mine, mates: mates.filter((m) => m.match_id === "c"), matches, table: [], poolName: null })!;
-    expect(x.swings[0].text).toBe("Everyone has Griquas. You say by 15, mates by 15 to 21.");
+  it("round 1: no standings line, just the break-away pitch", () => {
+    const zero = table.map((r) => ({ ...r, total_points: 0 }));
+    const x = buildDigest({ myEntry: 1, mine, mates, matches, table: zero, poolName: "P" })!;
     expect(x.standing).toBeNull();
+    expect(x.headline).toBe("Everyone starts on 0. Your 1 bold call is where you break away.");
   });
 
-  it("says when you lead", () => {
-    const x = buildDigest({ myEntry: 2, mine: mates.filter((m) => m.entry_id === 2), mates: mates.filter((m) => m.entry_id === 3), matches, table, poolName: "The Originals" })!;
-    expect(x.standing).toBe("You lead The Originals on 45 pts, 5 clear of Justin.");
+  it("reads in counts with a 10-person pool", () => {
+    const names = ["Reeves", "Christo", "Elsa", "Andy", "Sam", "Tom", "Lee", "Kim", "Max"];
+    const big = names.flatMap((n, i) => [
+      mate(10 + i, n, "a", i < 7 ? 13 : 24, i < 7 ? 20 : 10, i === 0),
+      mate(10 + i, n, "b", 20, 10),
+      mate(10 + i, n, "c", i < 4 ? 20 : 10, i < 4 ? 10 : 20),
+    ]);
+    const x = buildDigest({ myEntry: 1, mine, mates: big, matches, table: [], poolName: null })!;
+    expect(x.swings.map((s) => [s.match_id, s.kind])).toEqual([["a", "against"], ["c", "split"]]);
+    expect(x.swings[0].text).toBe("You, Kim and Max have Lions. 7 don't.");
+    expect(x.swings[0].bankers).toEqual(["Your Banker", "Reeves' Banker"]);
+    expect(x.swings[1].text).toBe("You and 5 mates have Griquas. 4 don't.");
+    expect(x.agreed).toBe(1);
   });
 
   it("returns nothing before any mate's call shows", () => {

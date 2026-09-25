@@ -1,8 +1,10 @@
 /**
  * The round at a glance: which of this round's games will move the table
- * between you and your mates, and where you stand going into them. Built only
+ * between you and your pool, and where you stand going into them. Built only
  * from calls you can already see (the database hides mates' calls until both
  * are locked), so it never gives anything away.
+ *
+ * It talks in counts, not names, so it reads the same with 2 mates or 20.
  */
 
 export interface DigestCall { entry_id: number; match_id: string; home_score: number; away_score: number; is_banker: boolean }
@@ -10,40 +12,40 @@ export interface DigestMate extends DigestCall { name: string }
 export interface DigestMatch { id: string; home: string; away: string; finished: boolean }
 export interface DigestRow { entry_id: number | null; manager: string; total_points: number }
 
+export type Side = "home" | "draw" | "away";
+export type Kind = "lone" | "against" | "split" | "with";
+
 export interface SwingGame {
   match_id: string;
-  title: string;          // "Lions v Sharks"
-  text: string;           // one sentence on where you split
-  tags: string[];         // "Your Banker", "Reeves' Banker"
-  weight: number;         // for ordering only
+  kind: Kind;
+  label: string;                       // "Lone wolf", "Against the pool", ...
+  mine: Side;
+  counts: Record<Side, number>;        // the whole pool's calls, you included
+  text: string;                        // one line on who's where
+  bankers: string[];                   // "Your Banker", "Reeves' Banker", "3 Bankers against you"
+  stake: number;                       // result points you bank that the mates against you don't, if you're right
 }
 
 export interface Digest {
-  swings: SwingGame[];
-  agreed: number;         // games where every mate called the same winner as you
+  headline: string;
   standing: string | null;
-  rival: string | null;
+  swings: SwingGame[];                 // the top few, boldest first
+  moreSwings: number;                  // swing games not shown
+  agreed: number;                      // games where every mate backs your winner
+  bold: number;                        // swing games where you're alone or in the minority
+  stake: number;                       // total over every swing game
 }
 
-const sign = (c: { home_score: number; away_score: number }) => Math.sign(c.home_score - c.away_score);
-const pick = (c: { home_score: number; away_score: number }, m: DigestMatch) =>
-  sign(c) > 0 ? m.home : sign(c) < 0 ? m.away : "a draw";
-const by = (c: { home_score: number; away_score: number }) => Math.abs(c.home_score - c.away_score);
-const names = (xs: string[]) => xs.length <= 2 ? xs.join(" and ") : `${xs.slice(0, 2).join(", ")} and ${xs.length - 2} more`;
+const side = (c: { home_score: number; away_score: number }): Side =>
+  c.home_score > c.away_score ? "home" : c.home_score < c.away_score ? "away" : "draw";
 const poss = (n: string) => (n.endsWith("s") ? `${n}'` : `${n}'s`);
+const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 const ord = (n: number) => {
   const t = n % 100, u = n % 10;
   return `${n}${t >= 11 && t <= 13 ? "th" : u === 1 ? "st" : u === 2 ? "nd" : u === 3 ? "rd" : "th"}`;
 };
-const backs = (c: DigestCall, m: DigestMatch) => sign(c) === 0 ? "a draw" : `${pick(c, m)} by ${by(c)}`;
-
-/** Roughly how many points could open up between two calls: a different
- *  winner is worth the 6 for the result plus the 5 for the margin, the same
- *  winner only the margin. A Banker on either side doubles it. */
-function gap(me: DigestCall, them: DigestCall) {
-  const base = sign(me) !== sign(them) ? 11 : Math.min(Math.abs(by(me) - by(them)), 10) / 2;
-  return base * (1 + (me.is_banker ? 1 : 0) + (them.is_banker ? 1 : 0));
-}
+const RANK: Record<Kind, number> = { lone: 4, against: 3, split: 2, with: 1 };
+const LABEL: Record<Kind, string> = { lone: "Lone wolf", against: "Against the pool", split: "Pool split", with: "With the pool" };
 
 export function buildDigest(opts: {
   myEntry: number;
@@ -62,60 +64,63 @@ export function buildDigest(opts: {
     const me = mine.find((c) => c.match_id === m.id);
     const theirs = mates.filter((c) => c.match_id === m.id);
     if (!me || !theirs.length) continue;
-    const against = theirs.filter((c) => sign(c) !== sign(me));
-    const tags = [
+    const my = side(me);
+    const against = theirs.filter((c) => side(c) !== my);
+    if (!against.length) { agreed++; continue; }
+    const withMe = theirs.filter((c) => side(c) === my);
+    const counts: Record<Side, number> = { home: 0, draw: 0, away: 0 };
+    for (const c of [me, ...theirs]) counts[side(c)]++;
+    const us = withMe.length + 1, them = against.length;
+    const kind: Kind = withMe.length === 0 ? "lone"
+      : us < them && Math.abs(us - them) > Math.max(1, Math.round(theirs.length / 5)) ? "against"
+      : Math.abs(us - them) <= Math.max(1, Math.round(theirs.length / 5)) ? "split" : "with";
+    const pick = my === "home" ? m.home : my === "away" ? m.away : "the draw";
+    // Names while they fit on a line, counts after that.
+    const group = (xs: DigestMate[]) => (xs.length <= 2 ? xs.map((c) => c.name).join(" and ") : plural(xs.length, "mate"));
+    const text = withMe.length === 0
+      ? `Only you have ${pick}. ${them === 1 ? against[0].name : them === 2 ? "Both mates" : `All ${them} mates`} went the other way.`
+      : `You${withMe.length === 2 ? `, ${group(withMe)}` : ` and ${group(withMe)}`} have ${pick}. ${
+          them <= 2 ? `${group(against)} ${them === 1 ? "doesn't" : "don't"}.` : `${them} don't.`}`;
+    const theirBankers = against.filter((c) => c.is_banker);
+    const bankers = [
       ...(me.is_banker ? ["Your Banker"] : []),
-      ...theirs.filter((c) => c.is_banker).map((c) => `${poss(c.name)} Banker`),
+      ...(theirBankers.length === 1 ? [`${poss(theirBankers[0].name)} Banker`]
+        : theirBankers.length ? [`${theirBankers.length} Bankers against you`] : []),
     ];
-    let text: string;
-    if (against.length === theirs.length) {
-      const other = [...new Set(against.map((c) => pick(c, m)))];
-      text = theirs.length === 1
-        ? `You've got ${backs(me, m)}, ${theirs[0].name} has ${other[0]}.`
-        : `You're on your own with ${backs(me, m)}. ${theirs.length === 2 ? "Both" : `All ${theirs.length}`} mates went ${other.length === 1 ? other[0] : "the other way"}.`;
-    } else if (against.length) {
-      text = `You've got ${backs(me, m)}. ${names(against.map((c) => c.name))} went the other way.`;
-    } else {
-      agreed++;
-      const bys = theirs.map(by);
-      const lo = Math.min(...bys), hi = Math.max(...bys);
-      text = sign(me) === 0
-        ? "Everyone has a draw, so only the exact score splits you."
-        : `Everyone has ${pick(me, m)}. You say by ${by(me)}, ${theirs.length === 1 ? theirs[0].name : "mates"} ${lo === hi ? `by ${lo}` : `by ${lo} to ${hi}`}.`;
-    }
-    games.push({ match_id: m.id, title: `${m.home} v ${m.away}`, text, tags,
-      weight: theirs.reduce((a, c) => a + gap(me, c), 0) / theirs.length + (against.length ? 100 : 0) });
+    // The 6 for the right result is yours and not theirs, doubled on your Banker.
+    games.push({ match_id: m.id, kind, label: LABEL[kind], mine: my, counts, text, bankers, stake: 6 * (me.is_banker ? 2 : 1) });
   }
-  if (!games.length) return null;
-  games.sort((a, b) => b.weight - a.weight);
-  // Games everyone agrees on only show when nothing splits you more.
-  const swings = games.filter((g) => g.weight >= 100).slice(0, top);
-  if (!swings.length) swings.push(...games.slice(0, Math.min(top, 2)));
+  if (!games.length && !agreed) return null;
+  games.sort((a, b) => RANK[b.kind] - RANK[a.kind] || b.bankers.length - a.bankers.length);
+  const bold = games.filter((g) => g.kind === "lone" || g.kind === "against").length;
+  const stake = games.reduce((a, g) => a + g.stake, 0);
 
-  let standing: string | null = null, rival: string | null = null;
+  // Where you stand, once anyone has a point on the board.
+  let standing: string | null = null;
   const rows = table.filter((r) => r.entry_id !== null);
   const meRow = rows.find((r) => r.entry_id === myEntry);
-  if (meRow && rows.length > 1 && poolName) {
-    const rank = 1 + rows.filter((r) => r.total_points > meRow.total_points).length;
-    const tied = rows.filter((r) => r.entry_id !== myEntry && r.total_points === meRow.total_points);
-    const above = rows.filter((r) => r.total_points > meRow.total_points).sort((a, b) => a.total_points - b.total_points)[0];
-    const below = rows.filter((r) => r.total_points < meRow.total_points).sort((a, b) => b.total_points - a.total_points)[0];
-    const pts = `${meRow.total_points} pt${meRow.total_points === 1 ? "" : "s"}`;
-    const target = above ?? tied[0] ?? below;
-    if (rank === 1 && !tied.length) standing = `You lead ${poolName} on ${pts}, ${meRow.total_points - below!.total_points} clear of ${below!.manager}.`;
-    else if (tied.length && !above) standing = `You're level at the top of ${poolName} on ${pts} with ${names(tied.map((r) => r.manager))}.`;
-    else standing = `You're ${ord(rank)} in ${poolName} on ${pts}, ${above!.total_points - meRow.total_points} behind ${above!.manager}.`;
-    if (target?.entry_id) {
-      const split = games.filter((g) => {
-        const me = mine.find((c) => c.match_id === g.match_id)!;
-        const them = mates.find((c) => c.match_id === g.match_id && c.entry_id === target.entry_id);
-        return them && sign(them) !== sign(me);
-      }).length;
-      const shared = games.filter((g) => mates.some((c) => c.match_id === g.match_id && c.entry_id === target.entry_id)).length;
-      if (shared) rival = split
-        ? `You and ${target.manager} split on ${split} of ${shared} game${shared === 1 ? "" : "s"}, so this round could swing it.`
-        : `You and ${target.manager} have the same winners in all ${shared === 1 ? "that game" : `${shared} games`}, so margins decide it.`;
+  const played = rows.some((r) => r.total_points > 0);
+  if (meRow && rows.length > 1 && poolName && played) {
+    const ahead = rows.filter((r) => r.total_points > meRow.total_points);
+    const level = rows.filter((r) => r.entry_id !== myEntry && r.total_points === meRow.total_points);
+    const pts = plural(meRow.total_points, "pt");
+    if (!ahead.length && !level.length) {
+      const next = Math.max(...rows.filter((r) => r.entry_id !== myEntry).map((r) => r.total_points));
+      standing = `You lead ${poolName} on ${pts}, ${meRow.total_points - next} clear.`;
+    } else if (!ahead.length) {
+      standing = `You're level at the top of ${poolName} on ${pts}${level.length <= 2 ? ` with ${level.map((r) => r.manager).join(" and ")}` : ` with ${level.length} others`}.`;
+    } else {
+      const leader = Math.max(...ahead.map((r) => r.total_points));
+      standing = `You're ${level.length ? "joint " : ""}${ord(ahead.length + 1)} of ${rows.length} in ${poolName} on ${pts}, ${leader - meRow.total_points} off the top.`;
     }
   }
-  return { swings, agreed, standing, rival };
+
+  const headline = !games.length
+    ? "You're with the whole pool on every game so far. Margins will decide it."
+    : !played
+      ? `Everyone starts on 0. ${bold ? `Your ${plural(bold, "bold call")} ${bold === 1 ? "is" : "are"} where you break away.` : "These splits are where it opens up."}`
+      : bold ? `${plural(bold, "bold call")} this round. Get ${bold === 1 ? "it" : "them"} right and you pull away.`
+        : "You're mostly with the pool, so a few splits decide it.";
+
+  return { headline, standing, bold, swings: games.slice(0, top), moreSwings: Math.max(0, games.length - top), agreed, stake };
 }
