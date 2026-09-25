@@ -506,4 +506,25 @@ select pg_temp.check((select count(*) from public.pool_members pm join public.po
                       where p.school_emis = '200100823' and pm.user_id = auth.uid()) = 0, 'removing your school takes you out of its pool');
 reset role;
 
+-- Chat history: a newcomer sees the pool's chat from when they joined
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000a');
+insert into public.pools (season, name, created_by) values ('2026', 'History', auth.uid());
+insert into public.chat_messages (pool_id, body) select id, 'before you got here' from public.pools where name = 'History';
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000b');
+do $$ declare c text; begin
+  reset role; select join_code into c from public.pools where name = 'History';
+  perform pg_temp.as_user('00000000-0000-0000-0000-00000000000b');
+  perform public.join_pool(c);
+end $$;
+select pg_temp.check((select count(*) from public.chat_messages c join public.pools p on p.id = c.pool_id where p.name = 'History') = 0,
+  'a newcomer doesn''t see chat from before they joined');
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000a');
+insert into public.chat_messages (pool_id, body) select id, 'welcome' from public.pools where name = 'History';
+select pg_temp.check((select count(*) from public.chat_messages c join public.pools p on p.id = c.pool_id where p.name = 'History') = 2,
+  'the pool''s starter still sees everything');
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000b');
+select pg_temp.check((select count(*) from public.chat_messages c join public.pools p on p.id = c.pool_id where p.name = 'History') = 1,
+  'a newcomer sees what''s said after they join');
+reset role;
+
 \echo ALL CHECKS PASSED
