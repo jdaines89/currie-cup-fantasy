@@ -394,4 +394,49 @@ delete from public.member_schools where user_id = auth.uid();
 select pg_temp.check((select count(*) from public.member_schools where user_id = auth.uid()) = 2, 'a fixed school can''t be removed and re-added');
 reset role;
 
+-- Vouching: two schoolmates confirm you; a vouch lapses if either moves school
+insert into public.schools (emis, name, town, province, no_fee, offers_primary, offers_matric, source) values
+  ('200100999', 'Other High School', 'Gqeberha', 'EC', true, false, true, 'test');
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000b');
+insert into public.member_schools (user_id, stage, emis, last_year) values (auth.uid(), 'high', '200100823', 1997);
+insert into public.school_vouches (voucher_id, member_id, stage, emis) values (auth.uid(), '00000000-0000-0000-0000-00000000000a', 'high', '200100823');
+do $$ begin
+  insert into public.school_vouches (voucher_id, member_id, stage, emis) values (auth.uid(), '00000000-0000-0000-0000-00000000000a', 'primary', '200100120');
+  raise exception 'FAILED: vouched for a school the voucher never went to';
+exception when insufficient_privilege then raise notice 'ok: only schoolmates can vouch';
+end $$;
+do $$ begin
+  insert into public.school_vouches (voucher_id, member_id, stage, emis) values ('00000000-0000-0000-0000-00000000000c', '00000000-0000-0000-0000-00000000000a', 'high', '200100823');
+  raise exception 'FAILED: vouched in someone else''s name';
+exception when insufficient_privilege then raise notice 'ok: nobody vouches in another member''s name';
+end $$;
+do $$ begin
+  insert into public.school_vouches (voucher_id, member_id, stage, emis) values (auth.uid(), auth.uid(), 'high', '200100823');
+  raise exception 'FAILED: vouched for themselves';
+exception when insufficient_privilege or check_violation then raise notice 'ok: nobody vouches for themselves';
+end $$;
+select pg_temp.check((select (vouches, verified) = (1, false) from public.school_members
+                      where user_id = '00000000-0000-0000-0000-00000000000a' and stage = 'high'), 'one vouch is not enough');
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000c');
+insert into public.member_schools (user_id, stage, emis, last_year) values (auth.uid(), 'high', '200100823', 2001);
+insert into public.school_vouches (voucher_id, member_id, stage, emis) values (auth.uid(), '00000000-0000-0000-0000-00000000000a', 'high', '200100823');
+select pg_temp.check((select verified from public.school_members
+                      where user_id = '00000000-0000-0000-0000-00000000000a' and stage = 'high'), 'two schoolmates verify you');
+update public.member_schools set emis = '200100999' where user_id = auth.uid() and stage = 'high';
+select pg_temp.check((select (vouches, verified) = (1, false) from public.school_members
+                      where user_id = '00000000-0000-0000-0000-00000000000a' and stage = 'high'), 'a vouch lapses when the voucher moves school');
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000b');
+delete from public.school_vouches where voucher_id = '00000000-0000-0000-0000-00000000000c';
+select pg_temp.check((select count(*) from public.school_vouches where voucher_id = '00000000-0000-0000-0000-00000000000c') = 1, 'nobody takes back another member''s vouch');
+delete from public.school_vouches where voucher_id = auth.uid();
+select pg_temp.check((select vouches from public.school_members
+                      where user_id = '00000000-0000-0000-0000-00000000000a' and stage = 'high') = 0, 'a vouch can be taken back');
+select pg_temp.as_user(null);
+do $$ begin
+  perform 1 from public.school_members;
+  raise exception 'FAILED: anon read schools';
+exception when insufficient_privilege then raise notice 'ok: signed-out visitors see no schools or vouches';
+end $$;
+reset role;
+
 \echo ALL CHECKS PASSED
