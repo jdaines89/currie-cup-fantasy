@@ -335,6 +335,27 @@ do $$ begin
   raise exception 'FAILED: anon read the crowd';
 exception when insufficient_privilege then raise notice 'ok: anon cannot read the crowd';
 end $$;
+-- Profile pictures: your own folder only, and only members see them
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000a');
+insert into storage.objects (bucket_id, name) values ('avatars', '00000000-0000-0000-0000-00000000000a/me.jpg');
+update public.members set avatar_path = '00000000-0000-0000-0000-00000000000a/me.jpg' where user_id = auth.uid();
+select pg_temp.check((select avatar_path from public.members where user_id = auth.uid()) is not null, 'a member sets their own picture');
+do $$ begin
+  insert into storage.objects (bucket_id, name) values ('avatars', '00000000-0000-0000-0000-00000000000c/fake.jpg');
+  raise exception 'FAILED: uploaded into someone else''s folder';
+exception when insufficient_privilege then raise notice 'ok: nobody uploads into another member''s folder';
+end $$;
+do $$ begin
+  update public.members set avatar_path = '00000000-0000-0000-0000-00000000000c/x.jpg' where user_id = auth.uid();
+  raise exception 'FAILED: pointed a picture at another member''s folder';
+exception when check_violation then raise notice 'ok: a picture can only point at your own folder';
+end $$;
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000c');
+select pg_temp.check((select count(*) from storage.objects where bucket_id = 'avatars') = 1, 'members see each other''s pictures');
+delete from storage.objects where bucket_id = 'avatars';
+select pg_temp.check((select count(*) from storage.objects where bucket_id = 'avatars') = 1, 'nobody deletes another member''s picture');
+select pg_temp.as_user(null);
+select pg_temp.check((select count(*) from storage.objects) = 0, 'signed-out visitors see no pictures');
 reset role;
 
 \echo ALL CHECKS PASSED

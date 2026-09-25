@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { AvatarPicker } from "@/components/avatar-picker";
 import { useLeague } from "@/components/league";
 import { supabase } from "@/lib/supabase";
 
-/** Your name, your team, your password and your reminders, in one place. */
+/** Your picture, name, team, password and reminders, in one place. */
 export default function MePage() {
   const { me, members, entry, season } = useLeague();
   const [name, setName] = useState(me.display_name);
@@ -55,6 +56,8 @@ export default function MePage() {
       <h2>Your profile</h2>
       <p className="sub">{me.email}</p>
       {msg && <p className="small" style={{ color: msg.ok ? "var(--accent)" : "var(--danger)" }}>{msg.text}</p>}
+
+      <AvatarPicker me={me} onMessage={say} />
 
       <form onSubmit={saveName} className="stack profile">
         <label className="small muted">Display name, as everyone sees it and tags you in chat</label>
