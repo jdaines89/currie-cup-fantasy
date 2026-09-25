@@ -454,3 +454,19 @@ img.avatar { object-fit: cover; padding: 0; }
 .school-mates li { display: flex; align-items: center; gap: 10px; }
 .school-mates .mate-name { flex: 1; min-width: 0; }
 .school-mates button { padding: 6px 12px; font-size: 13px; }
+
+/* Chat reactions: tap a message for the picker; counts sit under the bubble. */
+.bubble { cursor: pointer; }
+.msgactions { flex-wrap: wrap; align-items: center; }
+.emojipick { display: flex; gap: 2px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 999px; padding: 3px; }
+.emojipick button { border: 0; background: none; border-radius: 999px; padding: 4px 7px; font-size: 18px; line-height: 1; }
+.emojipick button:hover { background: var(--panel); }
+.reactions { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.rchip {
+  display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px;
+  background: var(--panel-2); border: 1px solid var(--line); color: var(--text); font-size: 13px; font-weight: 600; line-height: 1.5;
+}
+.rchip span { color: var(--muted); font-size: 12px; }
+.rchip:hover { background: var(--panel); color: var(--text); border-color: var(--line); }
+.rchip.mine { border-color: var(--accent-dim); background: #173a2a; }
+.rchip.mine span { color: var(--accent); }

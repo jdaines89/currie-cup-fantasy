@@ -191,6 +191,43 @@ end $$;
 reset role;
 select pg_temp.check((select count(*) from public.chat_messages) = 1, 'Andy could not delete Justin''s message');
 
+-- Reactions: pool mates react, one of each emoji, only as themselves
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000b');
+insert into public.chat_reactions (message_id, emoji) select id, '👍' from public.chat_messages;
+insert into public.chat_reactions (message_id, emoji) select id, '🔥' from public.chat_messages;
+select pg_temp.check((select count(*) from public.chat_reactions where user_id = auth.uid()) = 2, 'a pool mate reacts');
+do $$ begin
+  insert into public.chat_reactions (message_id, emoji) select id, '👍' from public.chat_messages;
+  raise exception 'FAILED: same emoji twice';
+exception when unique_violation then raise notice 'ok: one of each emoji per person';
+end $$;
+do $$ begin
+  insert into public.chat_reactions (message_id, emoji) select id, 'x' from public.chat_messages;
+  raise exception 'FAILED: odd emoji accepted';
+exception when check_violation then raise notice 'ok: only the fixed emoji set';
+end $$;
+do $$ begin
+  insert into public.chat_reactions (message_id, user_id, emoji) select id, '00000000-0000-0000-0000-00000000000a', '😂' from public.chat_messages;
+  raise exception 'FAILED: reacted as someone else';
+exception when insufficient_privilege then raise notice 'ok: nobody reacts as someone else';
+end $$;
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000c');
+select pg_temp.check((select count(*) from public.chat_reactions) = 0, 'reactions stay inside the pool');
+reset role;
+do $$ declare mid bigint := (select id from public.chat_messages limit 1); begin
+  perform pg_temp.as_user('00000000-0000-0000-0000-00000000000c');
+  insert into public.chat_reactions (message_id, emoji) values (mid, '😂');
+  raise exception 'FAILED: reacted outside own pool';
+exception when insufficient_privilege then raise notice 'ok: nobody reacts in a pool they''re not in';
+end $$;
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000a');
+delete from public.chat_reactions;
+select pg_temp.check((select count(*) from public.chat_reactions) = 2, 'nobody removes another member''s reaction');
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000b');
+delete from public.chat_reactions where emoji = '🔥';
+select pg_temp.check((select count(*) from public.chat_reactions) = 1, 'a reaction can be taken back');
+reset role;
+
 -- Kickoff reminders, on a live season: one match started, one in 30 minutes
 insert into public.seasons (id, name, is_replay, competition_id, feed_season) values ('2027', 'Currie Cup 2027', false, '5069', '2027');
 insert into public.pools (season, name, created_by) values ('2027', 'Live pool', '00000000-0000-0000-0000-00000000000a');

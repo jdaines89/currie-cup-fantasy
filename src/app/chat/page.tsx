@@ -8,6 +8,9 @@ import { supabase } from "@/lib/supabase";
 import type { ChatMessage, Member } from "@/lib/types";
 
 const PAGE = 30;
+const EMOJI = ["👍", "😂", "🔥", "😮", "😢", "🏉"];
+
+interface Reaction { message_id: number; user_id: string; emoji: string }
 
 export default function ChatPage() {
   return <NeedsPool><Chat /></NeedsPool>;
@@ -29,6 +32,39 @@ function Chat() {
   const [more, setMore] = useState(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
   const people = useMemo(() => new Map(everyone.map((m) => [m.user_id, m])), [everyone]);
+  const [reactions, setReactions] = useState<Reaction[]>([]);
+  const idsKey = msgs.map((m) => m.id).join(",");
+  const shownIds = useRef<number[]>([]);
+
+  // Reactions for the messages on screen, refreshed whenever anyone reacts.
+  const loadReactions = useCallback(async () => {
+    const ids = shownIds.current;
+    if (!ids.length) { setReactions([]); return; }
+    const { data } = await supabase.from("chat_reactions").select("message_id, user_id, emoji").in("message_id", ids);
+    setReactions((data ?? []) as Reaction[]);
+  }, []);
+  useEffect(() => {
+    shownIds.current = idsKey ? idsKey.split(",").map(Number) : [];
+    loadReactions();
+  }, [idsKey, loadReactions]);
+  useEffect(() => {
+    const ch = supabase.channel(`reactions:${poolId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "chat_reactions" }, () => loadReactions())
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [poolId, loadReactions]);
+
+  async function react(messageId: number, emoji: string) {
+    const had = reactions.some((r) => r.message_id === messageId && r.user_id === me.user_id && r.emoji === emoji);
+    setReactions((rs) => had
+      ? rs.filter((r) => !(r.message_id === messageId && r.user_id === me.user_id && r.emoji === emoji))
+      : [...rs, { message_id: messageId, user_id: me.user_id, emoji }]);
+    setPicked(null);
+    const { error } = had
+      ? await supabase.from("chat_reactions").delete().eq("message_id", messageId).eq("user_id", me.user_id).eq("emoji", emoji)
+      : await supabase.from("chat_reactions").insert({ message_id: messageId, emoji });
+    if (error) loadReactions();
+  }
 
   useEffect(() => {
     supabase.from("pool_members").select("user_id").eq("pool_id", poolId)
@@ -164,14 +200,21 @@ function Chat() {
                   </div>
                 )}
                 <div className={`bubble${picked === m.id ? " picked" : ""}`}
-                  onClick={mine ? () => setPicked(picked === m.id ? null : m.id) : undefined}>
+                  onClick={() => setPicked(picked === m.id ? null : m.id)}>
                   {parts.map((p, j) => "text" in p ? <span key={j}>{p.text}</span>
                     : <span key={j} className={`tag${p.userId === me.user_id ? " me" : ""}`}>@{people.get(p.userId)?.display_name ?? "someone"}</span>)}
                 </div>
+                <Reactions list={reactions.filter((r) => r.message_id === m.id)} me={me.user_id} people={people}
+                  onToggle={(e) => react(m.id, e)} />
                 {picked === m.id && (
                   <div className="msgactions">
-                    <button type="button" className="ghost" onClick={() => setPicked(null)}>Cancel</button>
-                    <button type="button" className="danger" onClick={() => remove(m.id)}>Delete message</button>
+                    <div className="emojipick" role="group" aria-label="React">
+                      {EMOJI.map((e) => (
+                        <button key={e} type="button" className="ghost" aria-label={`React ${e}`}
+                          onClick={() => react(m.id, e)}>{e}</button>
+                      ))}
+                    </div>
+                    {mine && <button type="button" className="danger" onClick={() => remove(m.id)}>Delete</button>}
                   </div>
                 )}
               </div>
@@ -193,6 +236,27 @@ function Chat() {
         <button type="submit" disabled={!text.trim()}>Send</button>
       </form>
       {err && <p className="small" style={{ color: "var(--danger)" }}>{err}</p>}
+    </div>
+  );
+}
+
+/** Counts under a message, one chip per emoji; yours are highlighted and tapping toggles. */
+function Reactions({ list, me, people, onToggle }: {
+  list: Reaction[]; me: string; people: Map<string, Member>; onToggle: (emoji: string) => void;
+}) {
+  if (!list.length) return null;
+  return (
+    <div className="reactions">
+      {EMOJI.filter((e) => list.some((r) => r.emoji === e)).map((e) => {
+        const who = list.filter((r) => r.emoji === e);
+        const mine = who.some((r) => r.user_id === me);
+        return (
+          <button key={e} type="button" className={`rchip${mine ? " mine" : ""}`} onClick={() => onToggle(e)}
+            title={who.map((r) => r.user_id === me ? "You" : people.get(r.user_id)?.display_name ?? "Someone").join(", ")}>
+            {e} <span>{who.length}</span>
+          </button>
+        );
+      })}
     </div>
   );
 }
