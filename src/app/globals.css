@@ -408,3 +408,15 @@ header.top .shell { position: relative; }
 .seg button { background: none; border: 0; color: var(--muted); border-radius: 999px; padding: 6px 16px; font-size: 13px; font-weight: 600; }
 .seg button:hover { background: none; color: var(--text); }
 .seg button.on { background: var(--panel); color: var(--text); box-shadow: 0 0 0 1px var(--line); }
+
+/* Profile pictures: a photo in the same round frame as the initials. */
+img.avatar { object-fit: cover; padding: 0; }
+.avatar-row { align-items: center; gap: 12px; }
+.cropper { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.crop-frame {
+  position: relative; overflow: hidden; border-radius: 50%; touch-action: none; cursor: grab;
+  background: var(--panel-2); border: 1px solid var(--line); user-select: none;
+}
+.crop-frame:active { cursor: grabbing; }
+.crop-frame img { position: absolute; left: 50%; top: 50%; max-width: none; pointer-events: none; }
+.cropper input[type="range"] { width: 220px; accent-color: var(--accent); }

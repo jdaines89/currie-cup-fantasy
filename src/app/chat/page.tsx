@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import { Avatar } from "@/components/avatar";
 import { NeedsPool, useLeague } from "@/components/league";
 import { encodeMentions, splitMentions, typingTag } from "@/lib/mentions";
 import { supabase } from "@/lib/supabase";
@@ -154,7 +155,7 @@ function Chat() {
             && new Date(m.created_at).getTime() - new Date(msgs[i - 1].created_at).getTime() < 5 * 60_000;
           return (
             <div key={m.id} className={`msg${mine ? " mine" : ""}${tagsMe ? " tagged" : ""}${grouped ? " grouped" : ""}`}>
-              {!grouped && !mine && <span className="avatar" aria-hidden>{initials(who?.display_name)}</span>}
+              {!grouped && !mine && <Avatar member={who} />}
               <div className="msgbody">
                 {!grouped && (
                   <div className="meta">
@@ -194,10 +195,6 @@ function Chat() {
       {err && <p className="small" style={{ color: "var(--danger)" }}>{err}</p>}
     </div>
   );
-}
-
-function initials(name?: string): string {
-  return (name ?? "?").split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
 }
 
 function when(iso: string): string {

@@ -36,6 +36,11 @@ rename; a trigger reads tags into `chat_mentions` (members only). Nobody posts
 as anyone else or edits a message; you can delete your own. New messages reach
 open screens through Supabase Realtime, under the same row-level security.
 
+**Profile pictures.** A member's photo is cropped and shrunk to 256 x 256 on
+their phone, then kept in the private `avatars` bucket under their own folder
+(`<user_id>/<random>.jpg`, named in `members.avatar_path`). Only members can
+see them, through signed links; each member adds or removes only their own.
+
 **Kickoff reminders.** Every five minutes `notify.send_reminders()` emails
 anyone with no score for a live match kicking off within the hour: one email
 per person through Brevo's API (pg_net), each match recorded in
