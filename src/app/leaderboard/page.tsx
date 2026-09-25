@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { HeadToHead } from "@/components/head-to-head";
 import { NeedsPool, useLeague } from "@/components/league";
+import { RoundRecap } from "@/components/round-recap";
 import { supabase } from "@/lib/supabase";
 import type { LeaderRow } from "@/lib/types";
 
@@ -29,6 +30,7 @@ function Leaderboard() {
     <div className="card">
       <h2>{pool!.name}</h2>
       <p className="sub">{season.name}. {season.is_replay ? "Only rounds that are locked in count." : "Scores count once a match is played."}</p>
+      <RoundRecap rows={rows} />
       {rows.length === 0 ? <p className="muted">No one here yet.</p> : (
         <ol className="board">
           {rows.map((r, i) => (

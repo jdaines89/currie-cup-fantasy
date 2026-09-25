@@ -350,3 +350,22 @@ header.top .shell { position: relative; }
 .joinnudge { display: grid; gap: 10px; }
 .joinnudge .row { display: flex; gap: 8px; }
 .joinnudge input { flex: 1; min-width: 0; text-transform: uppercase; letter-spacing: .12em; font-weight: 700; }
+
+/* The crowd: every player's calls on a locked match, as a three-way bar. */
+.crowd { border-top: 1px solid var(--line); padding: 8px 12px 10px; font-size: 13px; }
+.crowdhead { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+.crowdhead span:first-child { color: var(--accent); }
+.crowdbar { display: flex; height: 22px; border-radius: 6px; overflow: hidden; font-size: 11px; font-weight: 700; }
+.crowdbar span { display: flex; align-items: center; justify-content: center; white-space: nowrap; overflow: hidden; min-width: 0; padding: 0 4px; }
+.crowdbar .h { background: var(--accent-dim); color: #fff; }
+.crowdbar .d { background: #5c4a1c; color: #fff; }
+.crowdbar .a { background: #2b4d6b; color: #fff; }
+.txt { color: var(--text); }
+
+/* Round recap: the latest round's story for the pool, above the table. */
+.recap { background: var(--panel-2); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; margin: 4px 0 14px; }
+.recaphead { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.recaphead h3 { margin: 0; font-size: 16px; }
+.recap dl { margin: 8px 0 0; display: grid; gap: 8px; }
+.recap dt { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); }
+.recap dd { margin: 2px 0 0; font-size: 14px; }

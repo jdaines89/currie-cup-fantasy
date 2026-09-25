@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { NeedsEntry, useLeague } from "@/components/league";
 import { RoundPicker } from "@/components/round-picker";
+import { Crowd, type CrowdRow } from "@/components/crowd";
 import { Crest } from "@/components/team";
 import { kickoff } from "@/lib/format";
 import { isRugbyScore, scoreInput } from "@/lib/rugby";
@@ -54,6 +55,7 @@ function Predict() {
   const [scores, setScores] = useState<Map<string, PredScore>>(new Map());
   const [mates, setMates] = useState<MateCall[]>([]);
   const [myLocks, setMyLocks] = useState<Set<string>>(new Set());
+  const [crowd, setCrowd] = useState<Map<string, CrowdRow>>(new Map());
   const [msg, setMsg] = useState<string | null>(null);
 
   useEffect(() => { if (round === null && rounds.length) setRound(firstOpenRound(rounds, isLocked)); }, [round, rounds, isLocked]);
@@ -62,7 +64,7 @@ function Predict() {
   const load = useCallback(async () => {
     if (round === null) return;
     const ids = matches.filter((m) => m.round === round).map((m) => m.id);
-    const [p, s, theirs, theirScores, entries, ml] = await Promise.all([
+    const [p, s, theirs, theirScores, entries, ml, cr] = await Promise.all([
       supabase.from("predictions").select("*").eq("entry_id", entry!.id).in("match_id", ids),
       supabase.from("prediction_scores").select("match_id, total_pts, is_banker, result_pts, margin_pts, near_pts, exact_pts").eq("entry_id", entry!.id).in("match_id", ids),
       // Only calls that are locked come back: the database hides the rest.
@@ -70,7 +72,10 @@ function Predict() {
       supabase.from("prediction_scores").select("entry_id, match_id, total_pts").neq("entry_id", entry!.id).in("match_id", ids),
       supabase.from("entries").select("id, user_id, team_name").eq("season", season.id),
       supabase.from("match_locks").select("match_id").eq("entry_id", entry!.id).in("match_id", ids),
+      // Every player's calls as totals, only for matches your own call can no longer change.
+      supabase.rpc("match_crowd", { p_season: season.id }),
     ]);
+    setCrowd(new Map(((cr.data ?? []) as CrowdRow[]).map((x) => [x.match_id, x])));
     setMyLocks(new Set((ml.data ?? []).map((r: { match_id: string }) => r.match_id)));
     const owner = new Map(((entries.data ?? []) as { id: number; user_id: string }[]).map((e) => [e.id, e.user_id]));
     const pts = new Map(((theirScores.data ?? []) as { entry_id: number; match_id: string; total_pts: number }[])
@@ -211,6 +216,7 @@ function Predict() {
                   <span className="pts">{scores.has(m.id) ? `+${scores.get(m.id)!.total_pts}` : "no call"}</span>
                 </div>
               )}
+              {crowd.has(m.id) && <Crowd c={crowd.get(m.id)!} home={h} away={a} />}
               {mates.some((x) => x.match_id === m.id) && (
                 <details className="mates">
                   <summary>Your mates&apos; calls ({mates.filter((x) => x.match_id === m.id).length})</summary>
