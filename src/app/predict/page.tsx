@@ -4,13 +4,15 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from "react"
 import { NeedsEntry, useLeague } from "@/components/league";
 import { RoundPicker } from "@/components/round-picker";
 import { Crowd, type CrowdRow } from "@/components/crowd";
+import { RoundDigest } from "@/components/round-digest";
+import { buildDigest } from "@/lib/digest";
 import { Crest } from "@/components/team";
 import { kickoff } from "@/lib/format";
 import { isRugbyScore, scoreInput } from "@/lib/rugby";
 import { firstOpenRound, lockRound, useRoundLocks } from "@/lib/rounds";
 import { readCache, writeCache } from "@/lib/cache";
 import { supabase } from "@/lib/supabase";
-import type { Prediction } from "@/lib/types";
+import type { LeaderRow, Prediction } from "@/lib/types";
 
 interface PredScore {
   match_id: string; total_pts: number; is_banker: boolean;
@@ -49,7 +51,7 @@ export default function PredictPage() {
 }
 
 function Predict() {
-  const { entry, season, matches, rounds, teams, me, members, pools, reloadPools } = useLeague();
+  const { entry, season, matches, rounds, teams, me, members, pools, pool, reloadPools } = useLeague();
   const [code, setCode] = useState("");
   const [remind, setRemind] = useState(me.email_reminders);
   const { locked, isLocked, matchStarted, reload: reloadLocks } = useRoundLocks(entry!.id, season, matches);
@@ -61,6 +63,8 @@ function Predict() {
   const [myLocks, setMyLocks] = useState<Set<string>>(new Set());
   const [crowd, setCrowd] = useState<Map<string, CrowdRow>>(new Map());
   const [msg, setMsg] = useState<string | null>(null);
+  // The pool's table, for the digest's "where you stand" line.
+  const [table, setTable] = useState<LeaderRow[]>([]);
   // Which round's data is on screen (cached or fresh); until then the cards show placeholders.
   const [ready, setReady] = useState<string | null>(null);
   // Boxes typed into since the round opened, so a fresh copy landing late never overwrites them.
@@ -121,6 +125,13 @@ function Predict() {
     setReady(key);
   }, [entry, round, matches, season.id, members, apply]);
   useEffect(() => { touched.current = new Set(); }, [round]);
+  useEffect(() => {
+    if (!pool) { setTable([]); return; }
+    const key = `pooltable:${pool.id}`;
+    setTable(readCache<LeaderRow[]>(key) ?? []);
+    supabase.from("pool_leaderboard").select("*").eq("pool_id", pool.id)
+      .then(({ data }) => { if (data) { writeCache(key, data); setTable(data as LeaderRow[]); } });
+  }, [pool]);
   useEffect(() => { load(); }, [load]);
 
   if (round === null) return null;
@@ -128,6 +139,17 @@ function Predict() {
   const total = [...scores.values()].reduce((a, b) => a + b.total_pts, 0);
   const filled = ms.filter((m) => preds.has(m.id)).length;
   const hasBanker = ms.some((m) => preds.get(m.id)?.is_banker);
+  // Mates in the pool you're looking at; with no pool, anyone whose calls you can see.
+  const inPool = new Set(table.map((r) => r.entry_id));
+  const digest = ready === `predict:${entry!.id}:${round}` ? buildDigest({
+    myEntry: entry!.id,
+    mine: [...preds.values()],
+    mates: pool && table.length ? mates.filter((x) => inPool.has(x.entry_id)) : mates,
+    matches: ms.map((m) => ({ id: m.id, home: teams.get(m.home_team_id)?.display_name ?? "Home",
+      away: teams.get(m.away_team_id)?.display_name ?? "Away", finished: m.home_score !== null })),
+    table, poolName: pool?.name ?? null,
+  }) : null;
+  const unlockedCalls = season.is_replay ? 0 : ms.filter((m) => preds.has(m.id) && !matchStarted(m) && !myLocks.has(m.id)).length;
 
   async function save(matchId: string, rawH: string, rawA: string) {
     const h = scoreInput(rawH), a = scoreInput(rawA);
@@ -203,6 +225,7 @@ function Predict() {
           {done ? <>You scored <strong>{total}</strong> this round.</>
             : <>{filled} of {ms.length} called{hasBanker ? ", Banker picked" : ", no Banker yet"}.</>}
         </p>
+        {digest && <RoundDigest d={digest} round={round} open={unlockedCalls} />}
         {!done && (
           <details className="rules">
             <summary>How scoring works</summary>
