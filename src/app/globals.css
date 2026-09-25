@@ -344,3 +344,6 @@ header.top .shell { position: relative; }
 /* Few messages sit at the bottom, by the box, like any chat app */
 .chatlog > :first-child { margin-top: auto; }
 .card.chat { margin-bottom: 0; }
+.joinnudge { display: grid; gap: 10px; }
+.joinnudge .row { display: flex; gap: 8px; }
+.joinnudge input { flex: 1; min-width: 0; text-transform: uppercase; letter-spacing: .12em; font-weight: 700; }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { NeedsEntry, useLeague } from "@/components/league";
 import { RoundPicker } from "@/components/round-picker";
 import { Crest } from "@/components/team";
@@ -44,7 +44,8 @@ export default function PredictPage() {
 }
 
 function Predict() {
-  const { entry, season, matches, rounds, teams, me, members } = useLeague();
+  const { entry, season, matches, rounds, teams, me, members, pools, reloadPools } = useLeague();
+  const [code, setCode] = useState("");
   const [remind, setRemind] = useState(me.email_reminders);
   const { locked, isLocked, matchStarted, reload: reloadLocks } = useRoundLocks(entry!.id, season, matches);
   const [round, setRound] = useState<number | null>(null);
@@ -140,8 +141,23 @@ function Predict() {
   }
 
 
+  async function joinPool(e: FormEvent) {
+    e.preventDefault(); setMsg(null);
+    const { error } = await supabase.rpc("join_pool", { p_code: code.trim() });
+    if (error) setMsg(error.message); else { setCode(""); await reloadPools(); }
+  }
+
   return (
     <>
+      {pools.length === 0 && (
+        <form className="notice joinnudge" onSubmit={joinPool}>
+          <span>You&apos;re not in a pool for {season.name} yet, so nobody sees your score on a leaderboard. Got a code from a mate?</span>
+          <span className="row">
+            <input required maxLength={6} placeholder="Pool code" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} />
+            <button type="submit">Join</button>
+          </span>
+        </form>
+      )}
       <RoundPicker rounds={rounds} round={round} onPick={setRound} locked={locked} matches={matches} />
       <div className="card">
         <h2>Round {round} {done && <span className="badge win">locked</span>}</h2>
