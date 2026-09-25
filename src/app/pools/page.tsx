@@ -48,7 +48,8 @@ export default function PoolsPage() {
     <>
       <div className="card">
         <h2>Your pools for {season.name}</h2>
-        <p className="sub">A pool is a leaderboard and a chat. Your calls for {season.name} count in every pool you&apos;re in.</p>
+        <p className="sub">A pool is a leaderboard and a chat. Your calls for {season.name} count in every pool you&apos;re in.
+          Save your schools on your profile and you&apos;re in their pools automatically.</p>
         {pools.length === 0 && <p className="muted">None yet. Start one below, or join with a code from a mate.</p>}
         {pools.map((p) => {
           const inIt = mates.filter((m) => m.pool_id === p.id);
@@ -58,11 +59,17 @@ export default function PoolsPage() {
                 <button type="button" className="linkish" onClick={() => setPool(p.id)}><strong>{p.name}</strong></button>
                 <div className="small muted">{inIt.map((m) => m.user_id === me.user_id ? "You" : names.get(m.user_id) ?? "?").join(", ")}</div>
               </div>
-              <div className="code">
-                <span className="small muted">Code</span>
-                <strong>{p.join_code}</strong>
-              </div>
-              <button type="button" className="ghost" onClick={() => share(p.id, p.join_code, p.name)}>{copied === p.id ? "Copied" : "Invite"}</button>
+              {p.school_emis ? (
+                <span className="small muted">Your {p.school_stage === "primary" ? "primary" : "high"} school</span>
+              ) : (
+                <>
+                  <div className="code">
+                    <span className="small muted">Code</span>
+                    <strong>{p.join_code}</strong>
+                  </div>
+                  <button type="button" className="ghost" onClick={() => share(p.id, p.join_code, p.name)}>{copied === p.id ? "Copied" : "Invite"}</button>
+                </>
+              )}
             </div>
           );
         })}
