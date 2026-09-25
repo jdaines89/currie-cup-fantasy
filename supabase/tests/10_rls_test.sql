@@ -358,4 +358,40 @@ select pg_temp.as_user(null);
 select pg_temp.check((select count(*) from storage.objects) = 0, 'signed-out visitors see no pictures');
 reset role;
 
+-- Schools: one primary and one high school each, visible to the league, fixed after 14 days
+insert into public.schools (emis, name, town, province, no_fee, offers_primary, offers_matric, source) values
+  ('200100120', 'Clarendon Park Primary School', 'Gqeberha', 'EC', false, true, false, 'test'),
+  ('200100823', 'Victoria Park High School', 'Gqeberha', 'EC', false, false, true, 'test');
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000a');
+do $$ begin
+  insert into public.member_schools (user_id, stage, emis) values (auth.uid(), 'primary', '200100823');
+  raise exception 'FAILED: a high school was saved as a primary school';
+exception when check_violation then raise notice 'ok: a primary school must teach primary grades';
+end $$;
+insert into public.member_schools (user_id, stage, emis, last_year) values
+  (auth.uid(), 'primary', '200100120', 1990), (auth.uid(), 'high', '200100823', 1997);
+do $$ begin
+  insert into public.member_schools (user_id, stage, emis) values ('00000000-0000-0000-0000-00000000000b', 'high', '200100823');
+  raise exception 'FAILED: set a school for someone else';
+exception when insufficient_privilege then raise notice 'ok: nobody sets another member''s school';
+end $$;
+update public.member_schools set last_year = 1998 where user_id = auth.uid() and stage = 'high';
+select pg_temp.check((select last_year from public.member_schools where user_id = auth.uid() and stage = 'high') = 1998, 'a new choice can be corrected');
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000b');
+select pg_temp.check((select count(*) from public.member_schools) = 2, 'members see each other''s schools');
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000ff');
+select pg_temp.check((select count(*) from public.schools) + (select count(*) from public.member_schools) = 0, 'uninvited users see no schools');
+select pg_temp.as_user(null);
+reset role;  -- an admin fix, with no signed-in user
+update public.member_schools set first_saved_at = now() - interval '15 days';
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000a');
+do $$ begin
+  update public.member_schools set emis = '200100823', last_year = 1997 where user_id = auth.uid() and stage = 'high';
+  raise exception 'FAILED: changed a fixed school';
+exception when insufficient_privilege then raise notice 'ok: a school is fixed after 14 days';
+end $$;
+delete from public.member_schools where user_id = auth.uid();
+select pg_temp.check((select count(*) from public.member_schools where user_id = auth.uid()) = 2, 'a fixed school can''t be removed and re-added');
+reset role;
+
 \echo ALL CHECKS PASSED

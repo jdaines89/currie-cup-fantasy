@@ -2,10 +2,11 @@
 
 import { useState, type FormEvent } from "react";
 import { AvatarPicker } from "@/components/avatar-picker";
+import { MySchools } from "@/components/my-schools";
 import { useLeague } from "@/components/league";
 import { supabase } from "@/lib/supabase";
 
-/** Your picture, name, team, password and reminders, in one place. */
+/** Your picture, name, team, schools, password and reminders, in one place. */
 export default function MePage() {
   const { me, members, entry, season } = useLeague();
   const [name, setName] = useState(me.display_name);
@@ -52,45 +53,60 @@ export default function MePage() {
   }
 
   return (
-    <div className="card narrow">
-      <h2>Your profile</h2>
-      <p className="sub">{me.email}</p>
-      {msg && <p className="small" style={{ color: msg.ok ? "var(--accent)" : "var(--danger)" }}>{msg.text}</p>}
+    <div className="mepage">
+      {msg && <p className="small mepage-msg" style={{ color: msg.ok ? "var(--accent)" : "var(--danger)" }}>{msg.text}</p>}
+      <div className="grid2">
+        <div className="card">
+          <h2>Your profile</h2>
+          <p className="sub">{me.email}</p>
 
-      <AvatarPicker me={me} onMessage={say} />
+          <AvatarPicker me={me} onMessage={say} />
 
-      <form onSubmit={saveName} className="stack profile">
-        <label className="small muted">Display name, as everyone sees it and tags you in chat</label>
-        <div className="row">
-          <input maxLength={24} value={name} onChange={(e) => setName(e.target.value)} />
-          <button type="submit" disabled={name.trim() === me.display_name}>Save</button>
+          <form onSubmit={saveName} className="stack profile">
+            <label className="small muted">Display name, as everyone sees it and tags you in chat</label>
+            <div className="row">
+              <input maxLength={24} value={name} onChange={(e) => setName(e.target.value)} />
+              <button type="submit" disabled={name.trim() === me.display_name}>Save</button>
+            </div>
+          </form>
+
+          {entry && (
+            <form onSubmit={saveTeam} className="stack profile">
+              <label className="small muted">Team name for {season.name}</label>
+              <div className="row">
+                <input maxLength={40} value={team} onChange={(e) => setTeam(e.target.value)} />
+                <button type="submit" disabled={team.trim() === entry.team_name}>Save</button>
+              </div>
+            </form>
+          )}
         </div>
-      </form>
 
-      {entry && (
-        <form onSubmit={saveTeam} className="stack profile">
-          <label className="small muted">Team name for {season.name}</label>
-          <div className="row">
-            <input maxLength={40} value={team} onChange={(e) => setTeam(e.target.value)} />
-            <button type="submit" disabled={team.trim() === entry.team_name}>Save</button>
+        <div className="mepage-side">
+          <div className="card">
+            <h2>Your schools</h2>
+            <p className="sub">Where you went, so you can play for them</p>
+            <MySchools me={me} onMessage={say} />
           </div>
-        </form>
-      )}
 
-      <form onSubmit={savePassword} className="stack profile">
-        <label className="small muted">New password</label>
-        <div className="row">
-          <input type="password" autoComplete="new-password" placeholder="8+ characters" value={password} onChange={(e) => setPassword(e.target.value)} />
-          <button type="submit" disabled={!password}>Change</button>
+          <div className="card">
+            <h2>Account</h2>
+            <form onSubmit={savePassword} className="stack profile">
+              <label className="small muted">New password</label>
+              <div className="row">
+                <input type="password" autoComplete="new-password" placeholder="8+ characters" value={password} onChange={(e) => setPassword(e.target.value)} />
+                <button type="submit" disabled={!password}>Change</button>
+              </div>
+            </form>
+
+            <label className="small muted toggle">
+              <input type="checkbox" checked={remind} onChange={(e) => toggleReminders(e.target.checked)} />
+              Email me an hour before kickoff if I haven&apos;t called a score
+            </label>
+
+            <button type="button" className="ghost" style={{ marginTop: 18 }} onClick={() => supabase.auth.signOut()}>Sign out</button>
+          </div>
         </div>
-      </form>
-
-      <label className="small muted toggle">
-        <input type="checkbox" checked={remind} onChange={(e) => toggleReminders(e.target.checked)} />
-        Email me an hour before kickoff if I haven&apos;t called a score
-      </label>
-
-      <button type="button" className="ghost" style={{ marginTop: 18 }} onClick={() => supabase.auth.signOut()}>Sign out</button>
+      </div>
     </div>
   );
 }
