@@ -66,8 +66,6 @@ function Predict() {
   const [msg, setMsg] = useState<string | null>(null);
   // The pool's table, for the digest's "where you stand" line.
   const [table, setTable] = useState<LeaderRow[]>([]);
-  // Each side's last five results going into this round.
-  const [form, setForm] = useState<Map<string, string>>(new Map());
   // Which round's data is on screen (cached or fresh); until then the cards show placeholders.
   const [ready, setReady] = useState<string | null>(null);
   // Boxes typed into since the round opened, so a fresh copy landing late never overwrites them.
@@ -129,19 +127,6 @@ function Predict() {
   }, [entry, round, matches, season.id, members, apply]);
   useEffect(() => { touched.current = new Set(); }, [round]);
   useEffect(() => {
-    const rm = matches.filter((m) => m.round === round);
-    if (!rm.length) return;
-    const key = `form:${season.id}:${round}`;
-    setForm(new Map(readCache<[string, string][]>(key) ?? []));
-    const first = rm.map((m) => m.kickoff_at).sort()[0];
-    supabase.rpc("team_form", { p_teams: rm.flatMap((m) => [m.home_team_id, m.away_team_id]), p_before: first })
-      .then(({ data }) => {
-        if (!data) return;
-        const pairs = (data as { team_id: string; form: string }[]).map((x) => [x.team_id, x.form] as [string, string]);
-        writeCache(key, pairs); setForm(new Map(pairs));
-      });
-  }, [season.id, round, matches]);
-  useEffect(() => {
     if (!pool) { setTable([]); return; }
     const key = `pooltable:${pool.id}`;
     setTable(readCache<LeaderRow[]>(key) ?? []);
@@ -154,6 +139,15 @@ function Predict() {
   const done = isLocked(round);
   const total = [...scores.values()].reduce((a, b) => a + b.total_pts, 0);
   const filled = ms.filter((m) => preds.has(m.id)).length;
+  // Each side's last five results this season before the round starts, newest last. Blank until they've played.
+  const firstKick = ms.map((m) => m.kickoff_at).sort()[0];
+  const form = new Map<string, string>();
+  for (const x of matches.filter((m) => m.home_score !== null && m.away_score !== null && m.kickoff_at < firstKick)
+    .sort((a, b) => a.kickoff_at.localeCompare(b.kickoff_at))) {
+    const r = x.home_score! > x.away_score! ? ["W", "L"] : x.home_score! < x.away_score! ? ["L", "W"] : ["D", "D"];
+    form.set(x.home_team_id, ((form.get(x.home_team_id) ?? "") + r[0]).slice(-5));
+    form.set(x.away_team_id, ((form.get(x.away_team_id) ?? "") + r[1]).slice(-5));
+  }
   const hasBanker = ms.some((m) => preds.get(m.id)?.is_banker);
   // Mates in the pool you're looking at; with no pool, anyone whose calls you can see.
   const inPool = new Set(table.map((r) => r.entry_id));
