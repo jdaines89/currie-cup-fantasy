@@ -313,4 +313,28 @@ select pg_temp.check((select log_points from public.standings where season = '20
 select pg_temp.check((select bool_and(points_exact) from public.standings where season = '2027' and team_id in ('142072', '142073')), 'exact once Wikipedia has caught up');
 select pg_temp.check((select count(*) from public.standings where season = '2027') = 6, 'every team in the fixtures is on the log');
 
+-- The crowd: totals across every player, only once your own call is locked
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000c');
+select pg_temp.check((select calls from public.match_crowd('2027') where match_id = 't-soon') = 1, 'crowd shows a kicked-off match to any member');
+select pg_temp.check((select home_wins from public.match_crowd('2027') where match_id = 't-soon') is null, 'crowd hides the split below 3 calls');
+select pg_temp.check(not exists (select 1 from public.match_crowd('2027') where match_id = 't-later'), 'crowd is hidden before kickoff until you lock');
+insert into public.entries (season, team_name) values ('2027', 'Christo XV');
+insert into public.predictions (entry_id, match_id, home_score, away_score)
+select id, 't-later', 12, 15 from public.entries where user_id = auth.uid() and season = '2027';
+insert into public.match_locks (entry_id, match_id) select id, 't-later' from public.entries where season = '2027' and user_id = auth.uid();
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000a');
+select pg_temp.check((select (calls, home_wins, draws, away_wins, top_home, top_away, top_calls) = (3, 2, 0, 1, 30, 10, 2)
+                      from public.match_crowd('2027') where match_id = 't-later'), 'crowd splits and finds the most common call');
+insert into public.predictions (entry_id, match_id, home_score, away_score)
+select id, 't-future', 10, 3 from public.entries where user_id = auth.uid() and season = '2027';
+insert into public.match_locks (entry_id, match_id) select id, 't-future' from public.entries where season = '2027' and user_id = auth.uid();
+select pg_temp.check((select calls from public.match_crowd('2027') where match_id = 't-future') = 1, 'crowd never counts an open call');
+select pg_temp.as_user(null);
+do $$ begin
+  perform public.match_crowd('2027');
+  raise exception 'FAILED: anon read the crowd';
+exception when insufficient_privilege then raise notice 'ok: anon cannot read the crowd';
+end $$;
+reset role;
+
 \echo ALL CHECKS PASSED
