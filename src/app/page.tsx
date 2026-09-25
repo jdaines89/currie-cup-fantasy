@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useLeague } from "@/components/league";
 import { Team, stripe } from "@/components/team";
 import { kickoff } from "@/lib/format";
+import { readCache, writeCache } from "@/lib/cache";
 import { supabase } from "@/lib/supabase";
 import type { StandingRow } from "@/lib/types";
 
@@ -12,8 +13,9 @@ export default function Home() {
   const { season, matches, teams, me, entry } = useLeague();
   const [log, setLog] = useState<StandingRow[]>([]);
   useEffect(() => {
+    setLog(readCache<StandingRow[]>(`toplog:${season.id}`) ?? []);
     supabase.from("standings").select("*").eq("season", season.id).order("position").limit(6)
-      .then(({ data }) => setLog((data ?? []) as StandingRow[]));
+      .then(({ data }) => { const r = (data ?? []) as StandingRow[]; writeCache(`toplog:${season.id}`, r); setLog(r); });
   }, [season.id]);
 
   const played = matches.filter((m) => m.home_score !== null);
@@ -28,9 +30,10 @@ export default function Home() {
   const nextIds = next.map((m) => m.id).join(",");
   useEffect(() => {
     if (!entry || !nextIds) { setCalled(null); return; }
+    setCalled(readCache<number>(`called:${entry.id}:${nextIds}`) ?? null);
     supabase.from("predictions").select("match_id", { count: "exact", head: true })
       .eq("entry_id", entry.id).in("match_id", nextIds.split(","))
-      .then(({ count }) => setCalled(count ?? 0));
+      .then(({ count }) => { writeCache(`called:${entry.id}:${nextIds}`, count ?? 0); setCalled(count ?? 0); });
   }, [entry, nextIds]);
   const allCalled = called !== null && called >= next.length;
   const nudge = nextRound === null || called === null ? null

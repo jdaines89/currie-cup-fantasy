@@ -369,3 +369,12 @@ header.top .shell { position: relative; }
 .recap dl { margin: 8px 0 0; display: grid; gap: 8px; }
 .recap dt { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); }
 .recap dd { margin: 2px 0 0; font-size: 14px; }
+
+/* Loading placeholders: a soft pulse where content is about to land. */
+.skeleton { background: var(--panel-2); border: 1px solid var(--line); border-radius: var(--radius); animation: pulse 1.2s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .5; } }
+@media (prefers-reduced-motion: reduce) { .skeleton { animation: none; } }
+
+/* The crowd reads as one centred block, not a bar stretched across a wide screen. */
+.crowd > * { max-width: 460px; margin-left: auto; margin-right: auto; }
+.crowd p { text-align: center; }
