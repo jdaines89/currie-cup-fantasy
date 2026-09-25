@@ -448,3 +448,9 @@ img.avatar { object-fit: cover; padding: 0; }
   background: var(--panel-2); border: 0; border-radius: 0; color: var(--text); font-weight: 500; padding: 10px 12px;
 }
 .school-hits button:hover { background: var(--panel); color: var(--text); }
+.school-ok { color: var(--accent); }
+.school .small { margin: 0; }
+.school-mates { list-style: none; margin: 2px 0 0; padding: 0; display: grid; gap: 8px; }
+.school-mates li { display: flex; align-items: center; gap: 10px; }
+.school-mates .mate-name { flex: 1; min-width: 0; }
+.school-mates button { padding: 6px 12px; font-size: 13px; }

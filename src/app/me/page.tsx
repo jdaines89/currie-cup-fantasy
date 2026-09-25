@@ -85,7 +85,7 @@ export default function MePage() {
           <div className="card">
             <h2>Your schools</h2>
             <p className="sub">Where you went, so you can play for them</p>
-            <MySchools me={me} onMessage={say} />
+            <MySchools me={me} members={members} onMessage={say} />
           </div>
 
           <div className="card">
