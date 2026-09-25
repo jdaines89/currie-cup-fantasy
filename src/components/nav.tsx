@@ -3,7 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { Avatar } from "@/components/avatar";
+import { readCache } from "@/lib/cache";
 import { supabase } from "@/lib/supabase";
+import type { Member } from "@/lib/types";
 
 const TABS = [
   ["/", "Home"],
@@ -39,6 +42,19 @@ function useUnread(uid: string | null): Unread {
   return u;
 }
 
+/** You, for the picture in the corner: last visit's copy first, then the database's. */
+function useMe(uid: string | null): Member | undefined {
+  const [me, setMe] = useState<Member | undefined>();
+  useEffect(() => {
+    if (!uid) { setMe(undefined); return; }
+    const cached = readCache<{ me: Member }>("base")?.me;
+    if (cached?.user_id === uid) setMe(cached);
+    supabase.from("members").select("*").eq("user_id", uid).maybeSingle()
+      .then(({ data }) => { if (data) setMe(data as Member); });
+  }, [uid]);
+  return me;
+}
+
 export function Nav() {
   const path = usePathname();
   const [uid, setUid] = useState<string | null>(null);
@@ -48,13 +64,16 @@ export function Nav() {
     return () => data.subscription.unsubscribe();
   }, []);
   const unread = useUnread(uid);
+  const me = useMe(uid);
   if (!uid) return <nav className="tabs" />;
   return (
     <>
     <Link href="/me/" className={`melink${path === "/me/" ? " on" : ""}`} aria-label="Your profile">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
-        <circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" />
-      </svg>
+      {me?.avatar_path ? <Avatar member={me} size={38} /> : (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+          <circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" />
+        </svg>
+      )}
     </Link>
     <nav className="tabs">
       {TABS.map(([href, label]) => (

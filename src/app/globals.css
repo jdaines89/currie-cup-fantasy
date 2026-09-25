@@ -420,3 +420,31 @@ img.avatar { object-fit: cover; padding: 0; }
 .crop-frame:active { cursor: grabbing; }
 .crop-frame img { position: absolute; left: 50%; top: 50%; max-width: none; pointer-events: none; }
 .cropper input[type="range"] { width: 220px; accent-color: var(--accent); }
+
+/* Header: your picture fills the round profile button. */
+.melink { overflow: hidden; }
+.melink .avatar { display: block; }
+.melink:has(img.avatar) { border-color: var(--accent-dim); }
+
+/* Profile page: two columns on a wide screen, one on a phone. */
+.mepage-msg { margin: 0 0 12px; }
+.mepage-side { display: grid; gap: 18px; }
+.mepage-side .card { margin-bottom: 0; }
+.mepage .grid2 > .card { margin-bottom: 0; }
+
+/* Your schools */
+.schools { gap: 14px; }
+.school { display: grid; gap: 6px; }
+.school-saved { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel-2); }
+.school-name { font-weight: 600; }
+.school-add { justify-self: start; }
+.school-edit { gap: 8px; }
+.school-edit .row { display: flex; gap: 8px; }
+.school-edit .row input[type="number"] { flex: 1; width: auto; min-width: 0; }
+.school-hits { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.school-hits li + li { border-top: 1px solid var(--line); }
+.school-hits button {
+  width: 100%; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left;
+  background: var(--panel-2); border: 0; border-radius: 0; color: var(--text); font-weight: 500; padding: 10px 12px;
+}
+.school-hits button:hover { background: var(--panel); color: var(--text); }
