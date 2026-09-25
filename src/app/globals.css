@@ -395,3 +395,16 @@ header.top .shell { position: relative; }
 .dtext { margin: 0; font-size: 12.5px; color: var(--muted); }
 .dbank { color: var(--text); }
 .dfoot { margin: 12px 0 0; font-size: 12px; color: var(--muted); }
+
+/* Form guide: last five results under each side on Predict, newest on the right. */
+.form { display: inline-flex; gap: 3px; margin-top: 2px; }
+.form.right { align-self: flex-end; }
+.fr { width: 16px; height: 16px; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; line-height: 1; color: var(--muted); background: #22332c; }
+.fr.W { color: #07140e; background: var(--accent); }
+.fr.L { color: #f3d6d2; background: #5a2b27; }
+
+/* Leaderboard: Overall or one round at a time. */
+.seg { display: inline-flex; background: var(--panel-2); border: 1px solid var(--line); border-radius: 999px; padding: 3px; margin: 4px 0 12px; }
+.seg button { background: none; border: 0; color: var(--muted); border-radius: 999px; padding: 6px 16px; font-size: 13px; font-weight: 600; }
+.seg button:hover { background: none; color: var(--text); }
+.seg button.on { background: var(--panel); color: var(--text); box-shadow: 0 0 0 1px var(--line); }

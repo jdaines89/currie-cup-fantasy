@@ -5,6 +5,7 @@ import { NeedsEntry, useLeague } from "@/components/league";
 import { RoundPicker } from "@/components/round-picker";
 import { Crowd, type CrowdRow } from "@/components/crowd";
 import { RoundDigest } from "@/components/round-digest";
+import { Form } from "@/components/form";
 import { buildDigest } from "@/lib/digest";
 import { Crest } from "@/components/team";
 import { kickoff } from "@/lib/format";
@@ -65,6 +66,8 @@ function Predict() {
   const [msg, setMsg] = useState<string | null>(null);
   // The pool's table, for the digest's "where you stand" line.
   const [table, setTable] = useState<LeaderRow[]>([]);
+  // Each side's last five results going into this round.
+  const [form, setForm] = useState<Map<string, string>>(new Map());
   // Which round's data is on screen (cached or fresh); until then the cards show placeholders.
   const [ready, setReady] = useState<string | null>(null);
   // Boxes typed into since the round opened, so a fresh copy landing late never overwrites them.
@@ -125,6 +128,19 @@ function Predict() {
     setReady(key);
   }, [entry, round, matches, season.id, members, apply]);
   useEffect(() => { touched.current = new Set(); }, [round]);
+  useEffect(() => {
+    const rm = matches.filter((m) => m.round === round);
+    if (!rm.length) return;
+    const key = `form:${season.id}:${round}`;
+    setForm(new Map(readCache<[string, string][]>(key) ?? []));
+    const first = rm.map((m) => m.kickoff_at).sort()[0];
+    supabase.rpc("team_form", { p_teams: rm.flatMap((m) => [m.home_team_id, m.away_team_id]), p_before: first })
+      .then(({ data }) => {
+        if (!data) return;
+        const pairs = (data as { team_id: string; form: string }[]).map((x) => [x.team_id, x.form] as [string, string]);
+        writeCache(key, pairs); setForm(new Map(pairs));
+      });
+  }, [season.id, round, matches]);
   useEffect(() => {
     if (!pool) { setTable([]); return; }
     const key = `pooltable:${pool.id}`;
@@ -255,13 +271,13 @@ function Predict() {
                 </span>
               </div>
               <div className="pred">
-                <span className="pteam"><span className="ha home">Home</span><Crest team={h} /><strong>{h.display_name}</strong></span>
+                <span className="pteam"><span className="ha home">Home</span><Crest team={h} /><strong>{h.display_name}</strong><Form f={form.get(h.id)} /></span>
                 <input className={`pbox${bad(d[0]) ? " bad" : ""}`} inputMode="numeric" pattern="[0-9]*" maxLength={2} disabled={shut} value={d[0]}
                   aria-label={`${h.display_name} score`} onChange={(e) => save(m.id, e.target.value, d[1])} />
                 <span className="muted">–</span>
                 <input className={`pbox${bad(d[1]) ? " bad" : ""}`} inputMode="numeric" pattern="[0-9]*" maxLength={2} disabled={shut} value={d[1]}
                   aria-label={`${a.display_name} score`} onChange={(e) => save(m.id, d[0], e.target.value)} />
-                <span className="pteam away"><span className="ha">Away</span><Crest team={a} /><strong>{a.display_name}</strong></span>
+                <span className="pteam away"><span className="ha">Away</span><Crest team={a} /><strong>{a.display_name}</strong><Form f={form.get(a.id)} align="right" /></span>
               </div>
               {!shut && (bad(d[0]) || bad(d[1])) && (
                 <p className="scorewarn">A rugby side can&apos;t score 1, 2 or 4, so this call isn&apos;t saved yet.</p>
