@@ -297,9 +297,12 @@ details.rules summary { cursor: pointer; color: var(--accent); }
 details.mates { border-top: 1px solid var(--line); padding: 8px 12px; font-size: 13px; }
 details.mates summary { cursor: pointer; color: var(--accent); }
 details.mates ul { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; }
-details.mates li { display: grid; grid-template-columns: 1fr auto 44px; gap: 10px; align-items: center; }
+/* Mates' calls sit in the middle, under your own boxes, so you compare straight down. */
+details.mates li { display: grid; grid-template-columns: 1fr 130px 1fr; gap: 12px; align-items: center; }
+details.mates li > span:first-child { text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+details.mates li strong { text-align: center; font-size: 15px; font-variant-numeric: tabular-nums; }
 details.mates li .pchip { margin-left: 6px; }
-details.mates li .pts { text-align: right; color: var(--accent); font-weight: 700; }
+details.mates li .pts { text-align: left; color: var(--accent); font-weight: 700; }
 .chat h2 { margin-bottom: 12px; }
 
 /* Leaderboard */
