@@ -9,6 +9,7 @@ import type { LeaderRow } from "@/lib/types";
 interface Scored { entry_id: number; round: number; total_pts: number }
 interface Line { user_id: string; name: string; mine: boolean; pts: number[] }
 
+const FEW = 6;
 const H = 200, PAD = { l: 30, r: 96, t: 10, b: 24 };
 
 /** Running totals round by round: your line in colour, everyone else's quiet behind it. */
@@ -52,13 +53,26 @@ export function PoolRace({ rows }: { rows: LeaderRow[] }) {
   const ticks = [0, top / 2, top];
   // Yours drawn last so it sits on top.
   const ordered = [...lines].sort((a, b) => Number(a.mine) - Number(b.mine));
-  const labels = spread(lines.map((l) => ({ l, y: y(l.pts[n]) })), 15, PAD.t, H - PAD.b);
+  // A small pool labels everyone. A big one labels only the leader and the
+  // people either side of you, so the ends never pile up.
+  const many = lines.length > FEW;
+  const standing = [...lines].sort((a, b) => b.pts[n] - a.pts[n] || a.name.localeCompare(b.name));
+  const myAt = standing.findIndex((l) => l.mine);
+  const named = many ? new Set([standing[0], standing[myAt - 1], standing[myAt], standing[myAt + 1]].filter(Boolean).map((l) => l!.user_id)) : null;
+  const labels = spread(lines.filter((l) => !named || named.has(l.user_id)).map((l) => ({ l, y: y(l.pts[n]) })), 15, PAD.t, H - PAD.b);
+  const rankOf = (l: Line) => 1 + lines.filter((o) => o.pts[n] > l.pts[n]).length;
   const col = at ?? null;
-  const atRows = col === null ? [] : [...lines].sort((a, b) => b.pts[col] - a.pts[col] || a.name.localeCompare(b.name));
+  const atAll = col === null ? [] : [...lines].sort((a, b) => b.pts[col] - a.pts[col] || a.name.localeCompare(b.name));
+  // The tooltip: everyone in a small pool; the top 3 and you in a big one.
+  const atMine = atAll.findIndex((l) => l.mine);
+  const atRows = !many ? atAll.map((l, i) => ({ l, rank: i + 1 }))
+    : [...atAll.slice(0, 3).map((l, i) => ({ l, rank: i + 1 })), ...(atMine >= 3 ? [{ l: atAll[atMine], rank: atMine + 1 }] : [])];
 
   return (
     <figure className="race">
-      <figcaption className="small muted">Points race, round by round</figcaption>
+      <figcaption className="small muted">
+        Points race, round by round{many && myAt >= 0 ? ` · you're ${ordinal(rankOf(standing[myAt]))} of ${lines.length}` : ""}
+      </figcaption>
       <div className="racebox" ref={box}>
         <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Running points for ${lines.length} players over ${n} round${n === 1 ? "" : "s"}`}
           onMouseLeave={() => setAt(null)}>
@@ -73,14 +87,14 @@ export function PoolRace({ rows }: { rows: LeaderRow[] }) {
           ))}
           {col !== null && <line x1={x(col)} x2={x(col)} y1={PAD.t} y2={H - PAD.b} className="cross" />}
           {ordered.map((l) => (
-            <g key={l.user_id} className={l.mine ? "rl mine" : "rl"}>
+            <g key={l.user_id} className={`rl${l.mine ? " mine" : ""}${many ? " many" : ""}`}>
               <polyline points={l.pts.map((v, i) => `${x(i)},${y(v)}`).join(" ")} />
               <circle cx={x(n)} cy={y(l.pts[n])} r={l.mine ? 4 : 3} />
             </g>
           ))}
           {labels.map(({ l, y: ly }) => (
             <text key={l.user_id} x={x(n) + 10} y={ly + 4} className={l.mine ? "rlabel mine" : "rlabel"}>
-              {l.mine ? "You" : l.name} {l.pts[n]}
+              {many && !l.mine ? `${rankOf(l)}. ` : ""}{l.mine ? "You" : l.name} {l.pts[n]}
             </text>
           ))}
           {/* Wide invisible columns: hover or tap a round to see where everyone stood. */}
@@ -92,14 +106,21 @@ export function PoolRace({ rows }: { rows: LeaderRow[] }) {
         {col !== null && (
           <div className="racetip" style={{ left: `${Math.min(80, Math.max(20, (x(col) / W) * 100))}%` }}>
             <strong>{col === 0 ? "Start" : `After round ${rounds[col - 1]}`}</strong>
-            {atRows.map((l) => (
-              <div key={l.user_id} className={l.mine ? "mine" : ""}><span>{l.mine ? "You" : l.name}</span><span>{l.pts[col]}</span></div>
+            {atRows.map(({ l, rank }) => (
+              <div key={l.user_id} className={l.mine ? "mine" : ""}>
+                <span>{many ? `${rank}. ` : ""}{l.mine ? "You" : l.name}</span><span>{l.pts[col]}</span>
+              </div>
             ))}
           </div>
         )}
       </div>
     </figure>
   );
+}
+
+function ordinal(k: number): string {
+  const t = k % 100 >= 11 && k % 100 <= 13 ? "th" : ["th", "st", "nd", "rd"][k % 10] ?? "th";
+  return `${k}${t}`;
 }
 
 /** A round top for the y axis: 10, 20, 50, 100, 150… */

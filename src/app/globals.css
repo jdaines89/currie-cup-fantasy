@@ -521,3 +521,7 @@ main.shell:has(.card.chat) { padding-bottom: 12px; }
 .racetip strong { font-size: 12px; margin-bottom: 2px; }
 .racetip div { display: flex; justify-content: space-between; gap: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .racetip div.mine { color: var(--text); font-weight: 700; }
+.race .rl.many polyline { stroke-width: 1; opacity: 0.18; }
+.race .rl.many circle { display: none; }
+.race .rl.many.mine polyline { stroke-width: 2.5; opacity: 1; }
+.race .rl.many.mine circle { display: inline; }
