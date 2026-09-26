@@ -477,3 +477,27 @@ img.avatar { object-fit: cover; padding: 0; }
 .schools-table li { cursor: default; }
 .school-waiting { margin: 16px 0 8px; }
 .linkish.small { font-size: inherit; color: var(--accent); }
+
+/* Chat photos */
+.bubble.withphoto { padding: 4px; }
+.bubble.withphoto .btext { display: block; padding: 6px 10px 4px; max-width: 260px; }
+.bubble.photoonly { background: none; border-color: transparent; padding: 0; }
+.photo { display: block; max-width: min(260px, 100%); max-height: 320px; border-radius: 14px; cursor: zoom-in; object-fit: cover; }
+.photo.skeleton { width: 220px; height: 160px; }
+.photodraft { position: absolute; left: 18px; bottom: 100%; margin-bottom: 8px; display: flex; align-items: flex-end; gap: 8px;
+  padding: 6px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; }
+.photodraft img { width: 72px; height: 72px; object-fit: cover; border-radius: 10px; display: block; }
+.photodraft button { padding: 6px 10px; font-size: 13px; }
+.composer .photobtn { flex: none; width: 44px; height: 44px; padding: 0; display: grid; place-items: center; border-radius: 50%; color: var(--muted); }
+.composer .photobtn:hover { color: var(--accent); }
+.photoview { position: fixed; inset: 0; z-index: 50; background: rgba(0, 0, 0, 0.88); display: grid; place-items: center; padding: 16px; cursor: zoom-out; }
+.photoview img { max-width: 100%; max-height: 100%; border-radius: 8px; }
+main.shell:has(.card.chat) { padding-bottom: 12px; }
+
+/* Desktop: the header has room, so the mark and your picture are bigger. */
+@media (min-width: 761px) {
+  .brand svg { width: 48px; height: 48px; }
+  .melink { width: 54px; height: 54px; top: 14px; }
+  .melink .avatar { width: 52px !important; height: 52px !important; font-size: 18px !important; }
+  .melink svg { width: 26px; height: 26px; }
+}
