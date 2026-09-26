@@ -1,0 +1,42 @@
+-- Nicknames and English names for well-known schools, so search finds them
+-- the way people say them. Keyed by EMIS number. Safe to run again.
+update public.schools s set aka = a.aka
+from (values
+  ('108310249', array['Paarl Boys'' High', 'Paarl Boys High School', 'Boishaai']),
+  ('108310233', array['Paarl Gim', 'Paarl Gimnasium']),
+  ('108312236', array['Paarl Girls'' High', 'La Rochelle']),
+  ('440304211', array['Grey College', 'Grey College Bloemfontein']),
+  ('440304230', array['Grey College Primary', 'Grey Primary Bloemfontein']),
+  ('440304213', array['Hoërskool Sentraal', 'Sentraal Bloemfontein']),
+  ('440303194', array['Hoër Tegniese Skool Louis Botha', 'Louis Botha Tech']),
+  ('700230128', array['Affies', 'Afrikaanse Hoër Seunskool Pretoria']),
+  ('700230110', array['Afrikaanse Meisies', 'Affies Meisies']),
+  ('700250258', array['Monnas', 'Monument Krugersdorp']),
+  ('700130765', array['KES', 'King Edward VII School', 'King Edward']),
+  ('700231316', array['PBHS', 'Pretoria Boys High']),
+  ('700131128', array['Parktown Boys High']),
+  ('700130633', array['Jeppe Boys', 'Jeppe']),
+  ('500125356', array['DHS', 'Durban High']),
+  ('500199800', array['College', 'Maritzburg']),
+  ('500251008', array['Hoërskool Port Natal']),
+  ('500295852', array['Westville Boys']),
+  ('105310293', array['SACS', 'South African College High School']),
+  ('105000876', array['Diocesan College', 'Bishops Diocesan College']),
+  ('105310288', array['Rondebosch Boys High', 'RBHS']),
+  ('105310318', array['Wynberg Boys High', 'WBHS']),
+  ('109310275', array['PRG', 'Paul Roos Gymnasium']),
+  ('130303201', array['Drostdy Technical High School', 'Drostdy Tegniese Hoërskool']),
+  ('118110257', array['Hoërskool Outeniqua', 'Outeniqua George']),
+  ('121106203', array['Oakdale Landbou', 'Oakdale Riversdale']),
+  ('101310227', array['Hoërskool Durbanville']),
+  ('101310310', array['Hoërskool Tygerberg']),
+  ('101310326', array['Hoërskool Stellenberg']),
+  ('200100277', array['Grey High School', 'Grey PE', 'Grey Port Elizabeth', 'Grey Gqeberha']),
+  ('200100909', array['Daniel Pienaar Hoërskool']),
+  ('600100502', array['Potch Volks', 'Volkskool Potchefstroom']),
+  ('600101674', array['Potch Gim', 'Gimnasium Potchefstroom']),
+  ('600101672', array['Potch Boys', 'Potch Boys High']),
+  ('300015403', array['Kimberley Boys'' High']),
+  ('904220231', array['Hoërskool Pietersburg Polokwane'])
+) as a(emis, aka)
+where s.emis = a.emis;
