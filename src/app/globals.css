@@ -501,3 +501,23 @@ main.shell:has(.card.chat) { padding-bottom: 12px; }
   .melink .avatar { width: 52px !important; height: 52px !important; font-size: 18px !important; }
   .melink svg { width: 26px; height: 26px; }
 }
+
+/* Points race: your line in colour, the rest quiet behind it. */
+.race { margin: 0 0 14px; }
+.race figcaption { margin-bottom: 4px; }
+.racebox { position: relative; }
+.race svg { display: block; width: 100%; height: auto; overflow: visible; }
+.race .grid { stroke: var(--line); stroke-width: 1; }
+.race .cross { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 3; }
+.race .tick { fill: var(--muted); font-size: 11px; }
+.race .rl polyline { fill: none; stroke: var(--muted); stroke-width: 1.5; opacity: 0.4; stroke-linejoin: round; stroke-linecap: round; }
+.race .rl circle { fill: var(--muted); opacity: 0.5; }
+.race .rl.mine polyline { stroke: var(--accent); stroke-width: 2.5; opacity: 1; }
+.race .rl.mine circle { fill: var(--accent); opacity: 1; stroke: var(--panel); stroke-width: 2; }
+.race .rlabel { fill: var(--muted); font-size: 12px; }
+.race .rlabel.mine { fill: var(--text); font-weight: 700; }
+.racetip { position: absolute; top: 0; transform: translateX(-50%); min-width: 130px; pointer-events: none;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; font-size: 12px; display: grid; gap: 2px; }
+.racetip strong { font-size: 12px; margin-bottom: 2px; }
+.racetip div { display: flex; justify-content: space-between; gap: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.racetip div.mine { color: var(--text); font-weight: 700; }

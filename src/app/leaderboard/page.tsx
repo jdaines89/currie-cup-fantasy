@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { HeadToHead } from "@/components/head-to-head";
 import { NeedsPool, useLeague } from "@/components/league";
+import { PoolRace } from "@/components/pool-race";
 import { RoundRecap } from "@/components/round-recap";
 import { RoundTable } from "@/components/round-table";
 import { SchoolTable } from "@/components/school-table";
@@ -43,6 +44,8 @@ function Leaderboard() {
         <button type="button" role="tab" aria-selected={view === "schools"} className={view === "schools" ? "on" : ""} onClick={() => setView("schools")}>Schools</button>
       </div>
       {view === "schools" ? <SchoolTable /> : view === "round" ? (rows === null ? <SkeletonRows /> : <RoundTable rows={rows} />) : rows === null ? <SkeletonRows /> : rows.length === 0 ? <p className="muted">No one here yet.</p> : (
+        <>
+        <PoolRace rows={rows} />
         <ol className="board">
           {rows.map((r, i) => (
             <li key={r.user_id} className={`${r.user_id === me.user_id ? "me" : ""}${picked === r.user_id ? " open" : ""}`}
@@ -51,7 +54,7 @@ function Leaderboard() {
                 <span className="rank">{i + 1}</span>
                 <div className="who">
                   <strong>{r.manager}</strong>
-                  <span className="small muted">{r.team_name ?? "No team yet"} · {r.matches_scored} matches · {r.exact_scores} exact</span>
+                  <span className="small muted">{r.team_name ?? "No team yet"} · {r.matches_scored} match{r.matches_scored === 1 ? "" : "es"} · {r.right_results} right result{r.right_results === 1 ? "" : "s"} · {r.exact_scores} exact</span>
                 </div>
                 <span className="btotal">{r.total_points}</span>
               </div>
@@ -64,6 +67,7 @@ function Leaderboard() {
             </li>
           ))}
         </ol>
+        </>
       )}
       {view !== "schools" && <p className="small muted" style={{ marginTop: 12 }}>
         RES right result · MAR exact margin · CLS within 3 points · EXA exact score · BNK the extra your Banker doubled. They add up to the total.

@@ -14,7 +14,7 @@ const NEEDED = 2;
 
 const OPEN_DAYS = 14;
 const LABEL: Record<Stage, { title: string; year: string }> = {
-  primary: { title: "Primary school", year: "Year you left" },
+  primary: { title: "Primary school", year: "Year you completed" },
   high: { title: "High school", year: "Matric year" },
 };
 
@@ -137,7 +137,7 @@ function SchoolRow({ stage, me, saved, loading, mates, members, given, onSaved, 
             <div>
               <div className="school-name">{saved.schools.name}</div>
               <div className="small muted">
-                {[saved.schools.town, saved.last_year && `${stage === "high" ? "Matric" : "Left"} ${saved.last_year}`].filter(Boolean).join(" · ")}
+                {[saved.schools.town, saved.last_year && `${stage === "high" ? "Matric" : "Completed"} ${saved.last_year}`].filter(Boolean).join(" · ")}
               </div>
             </div>
             {locked
@@ -159,7 +159,7 @@ function SchoolRow({ stage, me, saved, loading, mates, members, given, onSaved, 
                     <Avatar member={who} size={28} />
                     <span className="mate-name">
                       {who?.display_name ?? "A member"}
-                      {m.last_year && <span className="small muted"> · {stage === "high" ? "Matric" : "Left"} {m.last_year}</span>}
+                      {m.last_year && <span className="small muted"> · {stage === "high" ? "Matric" : "Completed"} {m.last_year}</span>}
                     </span>
                     <button type="button" className={on ? "ghost" : ""} disabled={busy} onClick={() => vouch(m, !on)}
                       title={on ? "Tap to take it back" : "You went to school with them"}>

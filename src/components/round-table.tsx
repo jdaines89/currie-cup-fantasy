@@ -64,7 +64,7 @@ export function RoundTable({ rows }: { rows: LeaderRow[] }) {
               <span className="rank">{1 + table.filter((x) => x.pts > r.pts).length}</span>
               <div className="who">
                 <strong>{r.manager}</strong>
-                <span className="small muted">{r.called ? `${r.called} match${r.called === 1 ? "" : "es"} · ${r.right} right result${r.right === 1 ? "" : "s"} · ${r.exact} exact` : "No calls scored"}</span>
+                <span className="small muted">{r.team ?? "No team yet"} · {r.called ? `${r.called} match${r.called === 1 ? "" : "es"} · ${r.right} right result${r.right === 1 ? "" : "s"} · ${r.exact} exact` : "No calls scored"}</span>
               </div>
               <span className="btotal">{r.pts}</span>
             </div>
