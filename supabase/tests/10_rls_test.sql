@@ -529,8 +529,8 @@ reset role;
 
 -- School table: average points of confirmed players, ranked once a school has 3
 reset role;
-insert into public.schools (emis, name, town, province, no_fee, offers_primary, offers_matric, source) values
-  ('200100777', 'Table High School', 'Gqeberha', 'EC', false, false, true, 'test');
+insert into public.schools (emis, name, town, province, no_fee, offers_primary, offers_matric, source, learners) values
+  ('200100777', 'Table High School', 'Gqeberha', 'EC', false, false, true, 'test', 250);
 delete from public.school_vouches where stage = 'high';
 delete from public.member_schools where stage = 'high';
 insert into public.member_schools (user_id, stage, emis, last_year) values
@@ -570,6 +570,17 @@ select pg_temp.check((select points from public.school_table('2026', 'high') whe
                                                                    '00000000-0000-0000-0000-00000000000c')),
                      'school points are its confirmed players'' points');
 select pg_temp.check((select count(*) from public.school_table('2026', 'primary') where emis = '200100777') = 0, 'a high school isn''t in the primary table');
+select pg_temp.check((select seats = 3 from public.school_table('2026', 'high') where emis = '200100777'), 'a 250-learner school fields 3');
+reset role;
+select pg_temp.check(public.school_seats(null) = 5 and public.school_seats(80) = 3 and public.school_seats(546) = 6
+                     and public.school_seats(1000) = 10 and public.school_seats(2400) = 15, 'team size: 1 per 100 learners, 3 to 15, 5 if unknown');
+update public.schools set learners = 1500 where emis = '200100777';
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000b');
+select pg_temp.check((select seats = 15 and average = round(points::numeric / 15, 1) from public.school_table('2026', 'high')
+                      where emis = '200100777'), 'a big school with 3 players leaves 12 empty seats on 0');
+reset role;
+update public.schools set learners = 250 where emis = '200100777';
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000b');
 reset role;
 set role anon;
 do $$ begin

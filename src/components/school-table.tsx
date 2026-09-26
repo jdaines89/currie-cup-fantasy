@@ -6,7 +6,7 @@ import { readCache, writeCache } from "@/lib/cache";
 import { supabase } from "@/lib/supabase";
 
 type Stage = "high" | "primary";
-interface SchoolRow { emis: string; name: string; town: string | null; members: number; confirmed: number; points: number | null; average: number | null; mine: boolean }
+interface SchoolRow { emis: string; name: string; town: string | null; members: number; confirmed: number; seats: number; points: number | null; average: number | null; mine: boolean }
 const RANKED_AT = 3;
 
 /**
@@ -16,7 +16,7 @@ const RANKED_AT = 3;
 export function SchoolTable() {
   const { season } = useLeague();
   const [stage, setStage] = useState<Stage>("high");
-  const key = `schools:${season.id}:${stage}`;
+  const key = `schools2:${season.id}:${stage}`;
   const [rows, setRows] = useState<SchoolRow[] | null>(() => readCache<SchoolRow[]>(key) ?? null);
 
   useEffect(() => {
@@ -55,7 +55,7 @@ export function SchoolTable() {
                     <span className="rank">{1 + ranked.filter((x) => Number(x.average) > Number(r.average)).length}</span>
                     <div className="who">
                       <strong>{r.name}</strong>
-                      <span className="small muted">{[r.town, `${r.confirmed} confirmed player${r.confirmed === 1 ? "" : "s"}`].filter(Boolean).join(" · ")}</span>
+                      <span className="small muted">{[r.town, `${Math.min(r.confirmed, r.seats)} of ${r.seats} in the team`].filter(Boolean).join(" · ")}</span>
                     </div>
                     <span className="btotal">{Number(r.average).toFixed(1)}</span>
                   </div>
@@ -83,8 +83,10 @@ export function SchoolTable() {
         </>
       )}
       <p className="small muted" style={{ marginTop: 12 }}>
-        Schools are ranked on the average points of their confirmed players, so a small school can beat a big one.
-        A school is ranked once {RANKED_AT} of its players have been confirmed by schoolmates on their profiles.
+        Each school fields a team sized to the school: one player per 100 learners, from 3 to 15. The score is the
+        average of its best confirmed players across the whole team, and an empty seat counts as 0, so a small school
+        can beat a big one but three sharp callers can't carry a big school. A school is ranked once {RANKED_AT} of its
+        players have been confirmed by schoolmates on their profiles.
       </p>
     </>
   );
