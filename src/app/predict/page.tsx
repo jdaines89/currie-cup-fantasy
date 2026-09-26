@@ -269,13 +269,17 @@ function Predict() {
                 </span>
               </div>
               <div className="pred">
-                <span className="pteam"><span className="ha home">Home</span><Crest team={h} /><strong>{h.display_name}</strong><Form f={form.get(h.id)} /></span>
+                <span className="pteam"><span className="ha home">Home</span><Crest team={h} size={30} /></span>
                 <input className={`pbox${bad(d[0]) ? " bad" : ""}`} inputMode="numeric" pattern="[0-9]*" maxLength={2} disabled={shut} value={d[0]}
                   aria-label={`${h.display_name} score`} onChange={(e) => save(m.id, e.target.value, d[1])} />
                 <span className="muted">–</span>
                 <input className={`pbox${bad(d[1]) ? " bad" : ""}`} inputMode="numeric" pattern="[0-9]*" maxLength={2} disabled={shut} value={d[1]}
                   aria-label={`${a.display_name} score`} onChange={(e) => save(m.id, d[0], e.target.value)} />
-                <span className="pteam away"><span className="ha">Away</span><Crest team={a} /><strong>{a.display_name}</strong><Form f={form.get(a.id)} align="right" /></span>
+                <span className="pteam away"><span className="ha">Away</span><Crest team={a} size={30} /></span>
+              </div>
+              <div className="pnames">
+                <span><strong>{h.display_name}</strong><Form f={form.get(h.id)} /></span>
+                <span className="away"><strong>{a.display_name}</strong><Form f={form.get(a.id)} align="right" /></span>
               </div>
               {!shut && (bad(d[0]) || bad(d[1])) && (
                 <p className="scorewarn">A rugby side can&apos;t score 1, 2 or 4, so this call isn&apos;t saved yet.</p>

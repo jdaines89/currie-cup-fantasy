@@ -740,7 +740,18 @@ update public.matches set status = 'FT', home_score = 24, away_score = 17 where 
 select pg_temp.as_user('00000000-0000-0000-0000-00000000000b');
 select pg_temp.check((select status = 'awaiting' and winners = array['00000000-0000-0000-0000-00000000000b']::uuid[]
                       from public.pool_prizes((select id from pp)) where round = 1),
-                     'the top caller wins; someone who joined after kickoff can''t');
+                     'the top caller wins; games that started before you joined don''t count');
+-- Joining mid-round: only the games still to come count, and they can win on those
+reset role;
+update public.matches set kickoff_at = now() - interval '1 hour' where id = 'p1b';
+update public.pool_members set joined_at = now() - interval '2 hours'
+where pool_id = (select id from pp) and user_id = '00000000-0000-0000-0000-00000000000c';
+select pg_temp.check((select winners = array['00000000-0000-0000-0000-00000000000c']::uuid[]
+                      from public.prize_outcome((select id from pp), 1)),
+                     'a late joiner wins on the games after they joined (20 on one exact beats 16)');
+update public.matches set kickoff_at = now() - interval '3 hours' where id = 'p1b';
+update public.pool_members set joined_at = now() - interval '1 hour'
+where pool_id = (select id from pp) and user_id = '00000000-0000-0000-0000-00000000000c';
 select pg_temp.as_user('00000000-0000-0000-0000-00000000000c');
 do $$ begin
   insert into public.prize_receipts (pool_id, round) select id, 1 from pp;
