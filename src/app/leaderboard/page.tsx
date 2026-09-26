@@ -65,8 +65,9 @@ function Leaderboard() {
           ))}
         </ol>
       )}
-      {view === "overall" && <p className="small muted" style={{ marginTop: 12 }}>
-        RES right result · MAR exact margin · CLS within 3 points · EXA exact score · BNK the extra your Banker doubled. They add up to the total. Tap someone to compare rounds with yours.
+      {view !== "schools" && <p className="small muted" style={{ marginTop: 12 }}>
+        RES right result · MAR exact margin · CLS within 3 points · EXA exact score · BNK the extra your Banker doubled. They add up to the total.
+        {view === "overall" && " Tap someone to compare rounds with yours."}
       </p>}
     </div>
   );

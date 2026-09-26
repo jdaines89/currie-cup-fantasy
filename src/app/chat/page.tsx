@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent, type KeyboardEvent } from "react";
 import { Avatar } from "@/components/avatar";
 import { NeedsPool, useLeague } from "@/components/league";
 import { encodeMentions, splitMentions, typingTag } from "@/lib/mentions";
+import { photoUrl, shrinkPhoto } from "@/lib/photo";
 import { supabase } from "@/lib/supabase";
 import type { ChatMessage, Member } from "@/lib/types";
 
@@ -35,6 +36,12 @@ function Chat() {
   const [reactions, setReactions] = useState<Reaction[]>([]);
   const idsKey = msgs.map((m) => m.id).join(",");
   const shownIds = useRef<number[]>([]);
+  const [photo, setPhoto] = useState<{ blob: Blob; url: string } | null>(null);
+  const [sending, setSending] = useState(false);
+  const [viewing, setViewing] = useState<string | null>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
+  // Stay pinned to the newest message unless you've scrolled up to read.
+  const atBottom = useRef(true);
 
   // Reactions for the messages on screen, refreshed whenever anyone reacts.
   const loadReactions = useCallback(async () => {
@@ -92,25 +99,40 @@ function Chat() {
   // The log fills the screen down to the message box, whatever the phone:
   // measured, not guessed.
   const form = useRef<HTMLFormElement>(null);
+  const fitRef = useRef<() => void>(() => {});
   useEffect(() => {
     const fit = () => {
       const el = log.current, f = form.current;
       if (!el || !f) return;
       const vh = window.visualViewport?.height ?? window.innerHeight;
       const top = el.getBoundingClientRect().top + window.scrollY;
-      el.style.height = `${Math.max(260, vh - top - f.offsetHeight - 24)}px`;
+      let h = Math.max(260, vh - top - f.offsetHeight - 24);
+      el.style.height = `${h}px`;
+      // Whatever still hangs below the screen (padding, the error line) comes off too,
+      // so the box sits at the bottom without scrolling the page.
+      const over = document.documentElement.scrollHeight - vh;
+      if (over > 0) { h = Math.max(260, h - over); el.style.height = `${h}px`; }
+      if (atBottom.current) el.scrollTop = el.scrollHeight;
     };
+    fitRef.current = fit;
     fit();
     window.addEventListener("resize", fit);
     window.visualViewport?.addEventListener("resize", fit);
     return () => { window.removeEventListener("resize", fit); window.visualViewport?.removeEventListener("resize", fit); };
   }, []);
 
-  // Scroll to the newest and mark it read.
+  useEffect(() => { fitRef.current(); }, [photo, err]);
+
+  // Newest at the bottom, like any chat: scroll the log, not the page, and
+  // again whenever something under the last message grows (reactions, photos).
+  const toBottom = useCallback(() => {
+    if (atBottom.current && log.current) log.current.scrollTop = log.current.scrollHeight;
+  }, []);
+  useLayoutEffect(toBottom, [msgs, reactions, toBottom]);
+
+  // Mark the newest read.
   const lastId = msgs.length ? msgs[msgs.length - 1].id : 0;
   useEffect(() => {
-    // Newest at the bottom, like any chat. Scroll the log, not the page.
-    if (log.current) log.current.scrollTop = log.current.scrollHeight;
     if (lastId) {
       supabase.from("chat_reads").upsert({ user_id: me.user_id, pool_id: poolId, last_read_id: lastId }).then(() =>
         window.dispatchEvent(new Event("chat-read")));
@@ -138,12 +160,43 @@ function Chat() {
   async function send(e?: FormEvent) {
     e?.preventDefault();
     const body = encodeMentions(text.trim(), members);
-    if (!body) return;
-    setErr(null);
-    const { data, error } = await supabase.from("chat_messages").insert({ body, pool_id: poolId }).select().single();
-    if (error) { setErr(error.message); return; }
-    setText(""); setTag(null);
+    if ((!body && !photo) || sending) return;
+    setErr(null); setSending(true);
+    let image_path: string | null = null;
+    if (photo) {
+      image_path = `${poolId}/${me.user_id}/${crypto.randomUUID()}.jpg`;
+      const up = await supabase.storage.from("chat-photos").upload(image_path, photo.blob, { contentType: "image/jpeg" });
+      if (up.error) { setSending(false); setErr(up.error.message); return; }
+    }
+    const { data, error } = await supabase.from("chat_messages")
+      .insert(image_path ? { body, pool_id: poolId, image_path } : { body, pool_id: poolId }).select().single();
+    setSending(false);
+    if (error) {
+      if (image_path) supabase.storage.from("chat-photos").remove([image_path]);
+      setErr(error.message); return;
+    }
+    setText(""); setTag(null); clearPhoto();
+    atBottom.current = true;
     setMsgs((xs) => xs.some((x) => x.id === data.id) ? xs : [...xs, data as ChatMessage]);
+  }
+
+  async function pickPhoto(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setErr(null);
+    try {
+      const blob = await shrinkPhoto(file);
+      clearPhoto();
+      setPhoto({ blob, url: URL.createObjectURL(blob) });
+      box.current?.focus();
+    } catch (x) {
+      setErr((x as Error).message);
+    }
+  }
+
+  function clearPhoto() {
+    setPhoto((p) => { if (p) URL.revokeObjectURL(p.url); return null; });
   }
 
   function onKey(e: KeyboardEvent<HTMLTextAreaElement>) {
@@ -171,15 +224,23 @@ function Chat() {
   }
 
   async function remove(id: number) {
+    const path = msgs.find((x) => x.id === id)?.image_path;
     const { error } = await supabase.from("chat_messages").delete().eq("id", id);
-    if (!error) setMsgs((xs) => xs.filter((x) => x.id !== id));
+    if (!error) {
+      setMsgs((xs) => xs.filter((x) => x.id !== id));
+      if (path) supabase.storage.from("chat-photos").remove([path]);
+    }
     setPicked(null);
   }
 
   return (
     <div className="card chat">
       <h2>{pool!.name}</h2>
-      <div className="chatlog" ref={log} onScroll={(e) => { if (e.currentTarget.scrollTop < 60) older(); }}>
+      <div className="chatlog" ref={log} onScroll={(e) => {
+        const el = e.currentTarget;
+        atBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
+        if (el.scrollTop < 60) older();
+      }}>
         {more && <p className="muted small" style={{ textAlign: "center" }}>{loadingOlder ? "Loading older messages…" : "Scroll up for older messages"}</p>}
         {msgs.length === 0 && <p className="muted small">No messages yet. Start the banter.</p>}
         {msgs.map((m, i) => {
@@ -199,10 +260,11 @@ function Chat() {
                     <span>{when(m.created_at)}</span>
                   </div>
                 )}
-                <div className={`bubble${picked === m.id ? " picked" : ""}`}
+                <div className={`bubble${picked === m.id ? " picked" : ""}${m.image_path ? " withphoto" : ""}${m.image_path && !m.body.trim() ? " photoonly" : ""}`}
                   onClick={() => setPicked(picked === m.id ? null : m.id)}>
-                  {parts.map((p, j) => "text" in p ? <span key={j}>{p.text}</span>
-                    : <span key={j} className={`tag${p.userId === me.user_id ? " me" : ""}`}>@{people.get(p.userId)?.display_name ?? "someone"}</span>)}
+                  {m.image_path && <Photo path={m.image_path} onLoad={toBottom} onOpen={setViewing} />}
+                  {m.body.trim() && <span className="btext">{parts.map((p, j) => "text" in p ? <span key={j}>{p.text}</span>
+                    : <span key={j} className={`tag${p.userId === me.user_id ? " me" : ""}`}>@{people.get(p.userId)?.display_name ?? "someone"}</span>)}</span>}
                 </div>
                 <Reactions list={reactions.filter((r) => r.message_id === m.id)} me={me.user_id} people={people}
                   onToggle={(e) => react(m.id, e)} />
@@ -231,12 +293,48 @@ function Chat() {
             ))}
           </ul>
         )}
-        <textarea ref={box} rows={1} maxLength={900} placeholder="Message · @ to tag" value={text}
+        {photo && (
+          <div className="photodraft">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={photo.url} alt="Photo to send" />
+            <button type="button" className="ghost" onClick={clearPhoto}>Remove</button>
+          </div>
+        )}
+        <input ref={fileInput} type="file" accept="image/*" hidden onChange={pickPhoto} />
+        <button type="button" className="ghost photobtn" aria-label="Add a photo" disabled={sending}
+          onClick={() => fileInput.current?.click()}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <rect x="3" y="5" width="18" height="14" rx="2.5" /><circle cx="12" cy="12" r="3.5" /><path d="M8 5l1.5-2h5L16 5" />
+          </svg>
+        </button>
+        <textarea ref={box} rows={1} maxLength={900} placeholder={photo ? "Add a caption" : "Message · @ to tag"} value={text}
           onChange={(e) => onType(e.target.value)} onKeyDown={onKey} />
-        <button type="submit" disabled={!text.trim()}>Send</button>
+        <button type="submit" disabled={sending || (!text.trim() && !photo)}>{sending ? "Sending…" : "Send"}</button>
       </form>
+      {viewing && (
+        <div className="photoview" role="dialog" aria-label="Photo" onClick={() => setViewing(null)}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={viewing} alt="" />
+        </div>
+      )}
       {err && <p className="small" style={{ color: "var(--danger)" }}>{err}</p>}
     </div>
+  );
+}
+
+/** A chat photo, fetched through a short-lived private link. Tap to see it full size. */
+function Photo({ path, onLoad, onOpen }: { path: string; onLoad: () => void; onOpen: (url: string) => void }) {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    let live = true;
+    photoUrl(path).then((u) => { if (live) setUrl(u); });
+    return () => { live = false; };
+  }, [path]);
+  if (!url) return <div className="photo skeleton" />;
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img className="photo" src={url} alt="Photo" onLoad={onLoad}
+      onClick={(e) => { e.stopPropagation(); onOpen(url); }} />
   );
 }
 

@@ -579,4 +579,38 @@ exception when insufficient_privilege then raise notice 'ok: signed-out visitors
 end $$;
 reset role;
 
+-- Chat photos: only in your pools, only from your own folder, only pool members see them
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000a');
+do $$ declare pid bigint; begin
+  select id into pid from public.pools where name = 'History';
+  insert into storage.objects (bucket_id, name) values ('chat-photos', pid || '/' || auth.uid() || '/pic1.jpg');
+  insert into public.chat_messages (pool_id, body, image_path) values (pid, '', pid || '/' || auth.uid() || '/pic1.jpg');
+  raise notice 'ok: a photo can be posted without words';
+  begin
+    insert into public.chat_messages (pool_id, body) values (pid, '   ');
+    raise exception 'FAILED: posted an empty message';
+  exception when check_violation then raise notice 'ok: a message needs words or a photo';
+  end;
+  begin
+    insert into public.chat_messages (pool_id, body, image_path) values (pid, 'x', pid || '/00000000-0000-0000-0000-00000000000b/pic.jpg');
+    raise exception 'FAILED: pointed at someone else''s photo';
+  exception when check_violation then raise notice 'ok: a message only shows its author''s photos';
+  end;
+  begin
+    insert into storage.objects (bucket_id, name) values ('chat-photos', pid || '/00000000-0000-0000-0000-00000000000b/pic.jpg');
+    raise exception 'FAILED: uploaded into someone else''s folder';
+  exception when insufficient_privilege then raise notice 'ok: photos go only in your own folder';
+  end;
+  begin
+    insert into storage.objects (bucket_id, name) values ('chat-photos', '999999/' || auth.uid() || '/pic.jpg');
+    raise exception 'FAILED: uploaded into a pool you''re not in';
+  exception when insufficient_privilege then raise notice 'ok: photos go only in your pools';
+  end;
+end $$;
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000b');
+select pg_temp.check((select count(*) from storage.objects where bucket_id = 'chat-photos') = 1, 'pool mates see the photo');
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000c');
+select pg_temp.check((select count(*) from storage.objects where bucket_id = 'chat-photos') = 0, 'others don''t see the photo');
+reset role;
+
 \echo ALL CHECKS PASSED
