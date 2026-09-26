@@ -526,15 +526,21 @@ main.shell:has(.card.chat) { padding-bottom: 12px; }
 .race .rl.many.mine polyline { stroke-width: 2.5; opacity: 1; }
 .race .rl.many.mine circle { display: inline; }
 
-/* Round prizes: one quiet line, never a banner. */
-.prizeline { display: flex; flex-direction: column; gap: 4px; margin: -6px 0 14px; font-size: 14px; }
-.prizeline p { margin: 0; }
-.prizeline .missed { color: #e0a15a; }
+/* Round prizes: one small panel, never a banner. */
+.prize { border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel-2); margin: 0 0 14px; }
+.prize-row { display: flex; align-items: center; gap: 12px; padding: 10px 14px; }
+.prize-row + .prize-row { border-top: 1px solid var(--line); }
+.prize-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.prize-text strong { font-size: 15px; font-weight: 600; }
+.prize-label { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.prize-meta { font-size: 13px; color: var(--muted); }
+button.prize-btn { padding: 6px 12px; font-size: 13px; }
 .prizeform { display: grid; gap: 10px; }
 .prizefields { display: grid; grid-template-columns: 120px 1fr 1fr; gap: 8px; }
 @media (max-width: 560px) { .prizefields { grid-template-columns: 1fr; } }
-.prizelist .linkish.small { color: var(--muted); font-size: 12px; text-decoration: underline; }
-.prizelist { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
-.prizelist li { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
-.prizelist .st { font-size: 12px; color: var(--muted); white-space: nowrap; }
-.prizelist .st.bad { color: #e0a15a; }
+.prizelist { list-style: none; margin: 16px 0 0; padding: 0; border-top: 1px solid var(--line); }
+.prizelist li { display: grid; grid-template-columns: 36px 1fr auto; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.pl-round { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.pl-what { display: flex; flex-direction: column; gap: 2px; font-size: 15px; min-width: 0; }
+.pl-st { font-size: 13px; color: var(--muted); white-space: nowrap; }
+.pl-st.bad { color: #e0a15a; }
