@@ -646,4 +646,44 @@ exception when insufficient_privilege then raise notice 'ok: signed-out visitors
 end $$;
 reset role;
 
+-- Stored scores: always the same as scoring every call from scratch
+reset role;
+create temp view stored_ok as
+  select not exists (select * from public.prediction_points except select * from public.compute_points())
+     and not exists (select * from public.compute_points() except select * from public.prediction_points)
+     and not exists (
+       select 1 from public.entry_round_totals t
+       full join (select entry_id, round, sum(total_pts) tp, sum(result_pts) rp, sum(margin_pts) mp, sum(near_pts) np,
+                         sum(exact_pts) ep, count(*) filter (where right_result) rr, count(*) filter (where exact_pts > 0) es, count(*) n
+                  from public.prediction_points group by 1, 2) a using (entry_id, round)
+       where (t.total_pts, t.result_pts, t.margin_pts, t.near_pts, t.exact_pts, t.right_results, t.exact_scores, t.matches)
+             is distinct from (a.tp::int, a.rp::int, a.mp::int, a.np::int, a.ep::int, a.rr::int, a.es::int, a.n::int)) as ok;
+select pg_temp.check((select count(*) from public.prediction_points) > 0, 'the tests scored some calls');
+select pg_temp.check((select ok from stored_ok), 'after all the tests, stored points and round totals match a fresh scoring');
+create temp table fixed as select match_id, max(real_home) h from public.prediction_points group by match_id limit 1;
+update public.matches m set home_score = f.h + 7 from fixed f where m.id = f.match_id;
+select pg_temp.check((select ok from stored_ok) and exists (select 1 from public.prediction_points p join fixed f using (match_id) where p.real_home = f.h + 7),
+                     'a corrected result is re-scored straight away');
+update public.matches m set status = 'SCHEDULED', home_score = null, away_score = null from fixed f where m.id = f.match_id;
+select pg_temp.check((select ok from stored_ok) and not exists (select 1 from public.prediction_points p join fixed f using (match_id)),
+                     'a result taken back removes its points');
+update public.matches m set status = 'FT', home_score = f.h, away_score = 20 from fixed f where m.id = f.match_id;
+select pg_temp.check((select ok from stored_ok), 'the result coming back scores it again');
+select public.rescore_all();
+select pg_temp.check((select ok from stored_ok), 'a full rebuild gives the same numbers');
+set role anon;
+do $$ begin
+  perform 1 from public.prediction_points;
+  raise exception 'FAILED: anon read stored points';
+exception when insufficient_privilege then raise notice 'ok: signed-out visitors can''t read stored points';
+end $$;
+reset role;
+set role authenticated;
+do $$ begin
+  delete from public.entry_round_totals;
+  raise exception 'FAILED: a player changed stored totals';
+exception when insufficient_privilege then raise notice 'ok: players can''t change stored totals';
+end $$;
+reset role;
+
 \echo ALL CHECKS PASSED
