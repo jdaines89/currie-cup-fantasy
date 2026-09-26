@@ -613,4 +613,26 @@ select pg_temp.as_user('00000000-0000-0000-0000-00000000000c');
 select pg_temp.check((select count(*) from storage.objects where bucket_id = 'chat-photos') = 0, 'others don''t see the photo');
 reset role;
 
+-- School search: nicknames, no accents, the list's short forms, primary vs high
+reset role;
+insert into public.schools (emis, name, town, province, no_fee, offers_primary, offers_matric, source, aka) values
+  ('108310249', 'Hoër Jongenskool Paarl', 'Paarl', 'WC', false, false, true, 'test', array['Paarl Boys'' High', 'Boishaai']),
+  ('440304211', 'Grey-Kollege S/S', 'Bloemfontein', 'FS', false, false, true, 'test', '{}'),
+  ('440304230', 'Grey-Kollege P/S', 'Bloemfontein', 'FS', false, true, false, 'test', '{}');
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000a');
+select pg_temp.check((select emis from public.search_schools('paarl boys', 'high')) = '108310249', 'a nickname finds the school');
+select pg_temp.check((select emis from public.search_schools('BOISHAAI', 'high')) = '108310249', 'search ignores case');
+select pg_temp.check((select emis from public.search_schools('hoer jongens', 'high')) = '108310249', 'search ignores accents');
+select pg_temp.check((select emis from public.search_schools('grey kollege secondary', 'high')) = '440304211', 'S/S reads as secondary');
+select pg_temp.check((select array_agg(emis) from public.search_schools('grey kollege', 'primary')) = array['440304230'], 'primary search only lists primary schools');
+select pg_temp.check((select count(*) from public.search_schools('gr', 'high')) = 0, 'too short to search');
+reset role;
+set role anon;
+do $$ begin
+  perform 1 from public.search_schools('paarl', 'high');
+  raise exception 'FAILED: anon searched schools';
+exception when insufficient_privilege then raise notice 'ok: signed-out visitors can''t search schools';
+end $$;
+reset role;
+
 \echo ALL CHECKS PASSED

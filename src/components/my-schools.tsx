@@ -92,13 +92,12 @@ function SchoolRow({ stage, me, saved, loading, mates, members, given, onSaved, 
   }
 
   useEffect(() => {
-    const words = q.trim().replace(/[%_,()]/g, " ").split(/\s+/).filter(Boolean);
-    if (!editing || pick || words.join("").length < 3) { setHits([]); return; }
+    const text = q.trim();
+    if (!editing || pick || text.replace(/\s/g, "").length < 3) { setHits([]); return; }
     let live = true;
+    // Finds nicknames too ("Paarl Boys", "Affies"), ignoring accents and punctuation.
     const t = setTimeout(async () => {
-      const { data } = await supabase.from("schools").select("emis, name, town, no_fee")
-        .eq(stage === "primary" ? "offers_primary" : "offers_matric", true)
-        .ilike("name", `%${words.join("%")}%`).order("name").limit(8);
+      const { data } = await supabase.rpc("search_schools", { p_query: text, p_stage: stage });
       if (live) setHits((data ?? []) as School[]);
     }, 250);
     return () => { live = false; clearTimeout(t); };
@@ -187,7 +186,7 @@ function SchoolRow({ stage, me, saved, loading, mates, members, given, onSaved, 
             </div>
           ) : (
             <>
-              <input autoFocus placeholder="Start typing the school's name" value={q} onChange={(e) => setQ(e.target.value)} />
+              <input autoFocus placeholder="School name or nickname" value={q} onChange={(e) => setQ(e.target.value)} />
               {hits.length > 0 && (
                 <ul className="school-hits">
                   {hits.map((s) => (

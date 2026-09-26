@@ -25,3 +25,10 @@ on conflict (emis) do update set
   quintile = excluded.quintile, offers_primary = excluded.offers_primary, offers_matric = excluded.offers_matric,
   lat = excluded.lat, lon = excluded.lon, learners = excluded.learners, source = excluded.source;
 ```
+
+## Nicknames
+
+`school_aliases.sql` gives well-known schools the names people actually use
+("Paarl Boys", "Boishaai", "Affies", "Grey College", "KES"…), stored in
+`schools.aka` and searched by `public.search_schools`. Run it after any reload
+of the school list; it is safe to run again. Add a school by its EMIS number.
