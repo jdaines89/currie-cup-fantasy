@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useLeague } from "@/components/league";
 import { readCache, writeCache } from "@/lib/cache";
 import { supabase } from "@/lib/supabase";
+import type { PoolPrize } from "@/lib/prizes";
 import type { LeaderRow } from "@/lib/types";
 
 interface Scored {
@@ -19,7 +20,7 @@ interface Line { label: string; text: string }
  * so pool mates can already read every one of them. Share turns it into an
  * image for the group chat.
  */
-export function RoundRecap({ rows }: { rows: LeaderRow[] }) {
+export function RoundRecap({ rows, prizes = [] }: { rows: LeaderRow[]; prizes?: PoolPrize[] }) {
   const { matches, teams, pool, season } = useLeague();
   const [scored, setScored] = useState<Scored[]>(() => readCache<Scored[]>(`recap:${pool!.id}`) ?? []);
   const [note, setNote] = useState<string | null>(null);
@@ -53,6 +54,14 @@ export function RoundRecap({ rows }: { rows: LeaderRow[] }) {
     const best = Math.max(...entries.map((r) => roundPts(r.entry_id!)));
     lines.push({ label: "Round winner", text: `${who(entries.filter((r) => roundPts(r.entry_id!) === best).map((r) => r.entry_id!))} with ${best} pts` });
 
+    // The round's prize, once the round is decided. The app works out the winner (ties on exact scores, then right results).
+    const prize = prizes.find((p) => p.round === round && p.winners?.length);
+    if (prize) {
+      const byUser = new Map(entries.map((r) => [r.user_id, r.manager]));
+      const winners = prize.winners!.map((u) => byUser.get(u) ?? "A mate").join(" & ");
+      lines.push({ label: "Prize", text: `${winners} win${prize.winners!.length === 1 ? "s" : ""} the ${prize.prize}, thanks to ${prize.sponsor}` });
+    }
+
     if (round > Math.min(...scored.map((s) => s.round))) {
       const moves = entries.map((r) => ({ e: r.entry_id!, up: rank(round - 1, r.entry_id!) - rank(round, r.entry_id!) }));
       const top = Math.max(...moves.map((m) => m.up));
@@ -76,7 +85,7 @@ export function RoundRecap({ rows }: { rows: LeaderRow[] }) {
     const table = entries.map((r) => ({ name: r.manager, pts: upTo(round, r.entry_id!), rank: rank(round, r.entry_id!) }))
       .sort((a, b) => a.rank - b.rank || a.name.localeCompare(b.name)).slice(0, 6);
     return { round, complete, lines, table };
-  }, [scored, entries, matches, teams]);
+  }, [scored, entries, matches, teams, prizes]);
 
   if (!recap) return null;
   const title = `Round ${recap.round} ${recap.complete ? "recap" : "so far"}`;

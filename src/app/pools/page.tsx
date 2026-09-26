@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { useLeague } from "@/components/league";
+import { PrizeSetup } from "@/components/prize-setup";
 import { supabase } from "@/lib/supabase";
 
 interface Mate { pool_id: number; user_id: string }
@@ -74,6 +75,7 @@ export default function PoolsPage() {
           );
         })}
       </div>
+      <PrizeSetup />
       <div className="grid2">
         <form className="card" onSubmit={create}>
           <h2>Start a pool</h2>
