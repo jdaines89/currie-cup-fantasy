@@ -6,7 +6,7 @@ import { trackRecord, usePoolPrizes, whoWon, type PoolPrize } from "@/lib/prizes
 import { supabase } from "@/lib/supabase";
 
 const STATUS: Record<PoolPrize["status"], string> = {
-  upcoming: "Upcoming", "in play": "In play", "no winner": "No winner", awaiting: "Waiting for the winner",
+  upcoming: "Upcoming", "in play": "In play", "no winner": "No winner", awaiting: "Awaiting",
   delivered: "Delivered", "not delivered": "Not delivered",
 };
 
@@ -58,11 +58,7 @@ export function PrizeSetup() {
   return (
     <div className="card">
       <h2>Round prize for {pool.name}</h2>
-      <p className="sub">
-        Put up a prize for the top caller in a round. It&apos;s your promise, shown in your name. It locks when the round
-        kicks off, the winner marks it received, and everyone in the pool sees whether prizes arrive. Scrumline doesn&apos;t
-        handle the prize; the sponsor hands it over.
-      </p>
+      <p className="sub">For the round&apos;s top caller, in your name. It locks at kickoff, and the winner confirms it arrived.</p>
       {open.length === 0 ? <p className="muted">Every round has kicked off, so there&apos;s nothing left to put a prize on.</p> : (
         <form className="prizeform" onSubmit={offer}>
           <div className="prizefields">
@@ -82,17 +78,18 @@ export function PrizeSetup() {
           <ul className="prizelist">
             {prizes.map((p) => (
               <li key={p.round}>
-                <span>
-                  Round {p.round}: {p.prize} from {p.sponsor}
-                  {p.winners?.length ? <span className="muted"> · {whoWon(p, nameOf)}</span> : null}
+                <span className="pl-round">R{p.round}</span>
+                <span className="pl-what">
+                  {p.prize}
+                  <span className="prize-meta">{p.sponsor}{p.winners?.length ? ` · ${whoWon(p, nameOf)}` : ""}</span>
                 </span>
                 {p.status === "upcoming" && p.offered_by === me.user_id
-                  ? <button type="button" className="linkish small" onClick={() => withdraw(p.round)}>Withdraw</button>
-                  : <span className={p.status === "not delivered" ? "st bad" : "st"}>{STATUS[p.status]}</span>}
+                  ? <button type="button" className="ghost prize-btn" onClick={() => withdraw(p.round)}>Withdraw</button>
+                  : <span className={p.status === "not delivered" ? "pl-st bad" : "pl-st"}>{STATUS[p.status]}</span>}
               </li>
             ))}
           </ul>
-          {rec.decided > 0 && <p className="small muted" style={{ marginTop: 10 }}>Delivered {rec.delivered} of {rec.decided}.</p>}
+          {rec.decided > 0 && <p className="prize-meta" style={{ marginTop: 10 }}>Delivered {rec.delivered} of {rec.decided}</p>}
         </>
       )}
     </div>
