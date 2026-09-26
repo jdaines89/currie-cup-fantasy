@@ -525,3 +525,16 @@ main.shell:has(.card.chat) { padding-bottom: 12px; }
 .race .rl.many circle { display: none; }
 .race .rl.many.mine polyline { stroke-width: 2.5; opacity: 1; }
 .race .rl.many.mine circle { display: inline; }
+
+/* Round prizes: one quiet line, never a banner. */
+.prizeline { display: flex; flex-direction: column; gap: 4px; margin: -6px 0 14px; font-size: 14px; }
+.prizeline p { margin: 0; }
+.prizeline .missed { color: #e0a15a; }
+.prizeform { display: grid; gap: 10px; }
+.prizefields { display: grid; grid-template-columns: 120px 1fr 1fr; gap: 8px; }
+@media (max-width: 560px) { .prizefields { grid-template-columns: 1fr; } }
+.prizelist .linkish.small { color: var(--muted); font-size: 12px; text-decoration: underline; }
+.prizelist { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
+.prizelist li { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.prizelist .st { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.prizelist .st.bad { color: #e0a15a; }

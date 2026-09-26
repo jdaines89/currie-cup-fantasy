@@ -686,4 +686,100 @@ exception when insufficient_privilege then raise notice 'ok: players can''t chan
 end $$;
 reset role;
 
+-- Round prizes: the pool creator's public promise
+reset role;
+insert into public.seasons (id, name, is_replay, competition_id, feed_season) values ('prize', 'Prize test', false, '5069', 'prize');
+insert into public.pools (season, name, created_by) values ('prize', 'Prize pool', '00000000-0000-0000-0000-00000000000a');
+insert into public.pool_members (pool_id, user_id, joined_at)
+select id, u, now() - interval '30 days' from public.pools,
+       unnest(array['00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-00000000000c']::uuid[]) u
+where name = 'Prize pool'
+on conflict (pool_id, user_id) do update set joined_at = excluded.joined_at;
+update public.pool_members set joined_at = now() - interval '30 days' where pool_id = (select id from public.pools where name = 'Prize pool');
+insert into public.matches (id, season, round, kickoff_at, home_team_id, away_team_id, status, source) values
+  ('p1a', 'prize', 1, now() + interval '1 day', '142072', '142073', 'SCHEDULED', 'test'),
+  ('p1b', 'prize', 1, now() + interval '1 day 2 hours', '142075', '142070', 'SCHEDULED', 'test'),
+  ('p2a', 'prize', 2, now() + interval '8 days', '142072', '142073', 'SCHEDULED', 'test'),
+  ('p3a', 'prize', 3, now() + interval '15 days', '142072', '142073', 'SCHEDULED', 'test');
+insert into public.entries (user_id, season, team_name)
+select u, 'prize', 'Team' from unnest(array['00000000-0000-0000-0000-00000000000a', '00000000-0000-0000-0000-00000000000b',
+                                             '00000000-0000-0000-0000-00000000000c']::uuid[]) u;
+create temp table pp as select id from public.pools where name = 'Prize pool';
+grant select on pp to authenticated;
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000a');
+insert into public.round_prizes (pool_id, round, sponsor, prize) select id, 1, 'Joe''s Pub', 'R200 bar tab' from pp;
+select pg_temp.check((select offered_by from public.round_prizes where round = 1 and pool_id = (select id from pp)) = '00000000-0000-0000-0000-00000000000a',
+                     'the creator puts up a prize, in their own name');
+do $$ begin
+  update public.round_prizes set prize = 'Nothing' where round = 1;
+  raise exception 'FAILED: a prize was edited';
+exception when insufficient_privilege then raise notice 'ok: a prize can''t be edited';
+end $$;
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000b');
+do $$ begin
+  insert into public.round_prizes (pool_id, round, sponsor, prize) select id, 2, 'Me', 'A beer' from pp;
+  raise exception 'FAILED: someone who didn''t start the pool offered a prize';
+exception when insufficient_privilege then raise notice 'ok: only the pool''s creator offers prizes';
+end $$;
+select pg_temp.check((select status from public.pool_prizes((select id from pp)) where round = 1) = 'upcoming', 'before kickoff the prize is upcoming');
+-- Round 1 kicks off; c only joins after kickoff
+reset role;
+insert into public.predictions (entry_id, match_id, home_score, away_score)
+select e.id, m.id, case e.user_id when '00000000-0000-0000-0000-00000000000b' then 20
+                               when '00000000-0000-0000-0000-00000000000c' then 24 else 10 end, 17
+from public.entries e cross join (values ('p1a'), ('p1b')) m(id) where e.season = 'prize';
+update public.matches set kickoff_at = now() - interval '3 hours' where id in ('p1a', 'p1b');
+update public.pool_members set joined_at = now() - interval '1 hour'
+where pool_id = (select id from pp) and user_id = '00000000-0000-0000-0000-00000000000c';
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000a');
+delete from public.round_prizes where round = 1;
+select pg_temp.check((select count(*) from public.round_prizes where round = 1) = 1, 'after kickoff the prize can''t be taken back');
+select pg_temp.check((select status from public.pool_prizes((select id from pp)) where round = 1) = 'in play', 'during the round the prize is in play');
+reset role;
+update public.matches set status = 'FT', home_score = 24, away_score = 17 where id in ('p1a', 'p1b');
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000b');
+select pg_temp.check((select status = 'awaiting' and winners = array['00000000-0000-0000-0000-00000000000b']::uuid[]
+                      from public.pool_prizes((select id from pp)) where round = 1),
+                     'the top caller wins; someone who joined after kickoff can''t');
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000c');
+do $$ begin
+  insert into public.prize_receipts (pool_id, round) select id, 1 from pp;
+  raise exception 'FAILED: a non-winner marked the prize received';
+exception when insufficient_privilege then raise notice 'ok: only a winner can mark a prize received';
+end $$;
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000b');
+insert into public.prize_receipts (pool_id, round) select id, 1 from pp;
+select pg_temp.check((select status from public.pool_prizes((select id from pp)) where round = 1) = 'delivered', 'the winner marks it received: delivered');
+-- A prize nobody confirms goes on the record, and blocks new prizes
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000a');
+insert into public.round_prizes (pool_id, round, sponsor, prize) select id, 2, 'Joe''s Pub', 'R200 bar tab' from pp;
+reset role;
+insert into public.predictions (entry_id, match_id, home_score, away_score)
+select e.id, 'p2a', case when e.user_id = '00000000-0000-0000-0000-00000000000b' then 24 else 10 end, 17 from public.entries e where e.season = 'prize';
+update public.matches set kickoff_at = now() - interval '20 days', status = 'FT', home_score = 24, away_score = 17 where id = 'p2a';
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000a');
+select pg_temp.check((select status from public.pool_prizes((select id from pp)) where round = 2) = 'not delivered',
+                     'unconfirmed 14 days after the round: not delivered');
+select pg_temp.check(not public.can_offer_prize((select id from pp), 3), 'a creator who owes a prize can''t offer another');
+do $$ begin
+  insert into public.round_prizes (pool_id, round, sponsor, prize) select id, 3, 'Joe''s Pub', 'R200' from pp;
+  raise exception 'FAILED: offered a prize while owing one';
+exception when insufficient_privilege then raise notice 'ok: owing a prize blocks a new one';
+end $$;
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000b');
+insert into public.prize_receipts (pool_id, round) select id, 2 from pp;
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000a');
+select pg_temp.check(public.can_offer_prize((select id from pp), 3), 'once it''s received, the creator can offer again');
+select pg_temp.check(not public.can_offer_prize((select id from pp), 2), 'no prize for a round that has started');
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000ff');
+select pg_temp.check((select count(*) from public.pool_prizes((select id from pp))) = 0, 'outsiders see no prizes');
+reset role;
+set role anon;
+do $$ begin
+  perform 1 from public.round_prizes;
+  raise exception 'FAILED: anon read prizes';
+exception when insufficient_privilege then raise notice 'ok: signed-out visitors can''t read prizes';
+end $$;
+reset role;
+
 \echo ALL CHECKS PASSED

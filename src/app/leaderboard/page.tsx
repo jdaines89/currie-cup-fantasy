@@ -4,11 +4,13 @@ import { useEffect, useState } from "react";
 import { HeadToHead } from "@/components/head-to-head";
 import { NeedsPool, useLeague } from "@/components/league";
 import { PoolRace } from "@/components/pool-race";
+import { PrizeLine } from "@/components/prize-line";
 import { RoundRecap } from "@/components/round-recap";
 import { RoundTable } from "@/components/round-table";
 import { SchoolTable } from "@/components/school-table";
 import { readCache, writeCache } from "@/lib/cache";
 import { supabase } from "@/lib/supabase";
+import { usePoolPrizes } from "@/lib/prizes";
 import type { LeaderRow } from "@/lib/types";
 
 const PARTS = [
@@ -26,6 +28,7 @@ function Leaderboard() {
   const [picked, setPicked] = useState<string | null>(null);
   const [view, setView] = useState<"overall" | "round" | "schools">("overall");
   const mine = rows?.find((r) => r.user_id === me.user_id)?.entry_id ?? null;
+  const [prizes, reloadPrizes] = usePoolPrizes(pool!.id);
   useEffect(() => {
     setRows(readCache<LeaderRow[]>(`board:${pool!.id}`) ?? null);
     supabase.from("pool_leaderboard").select("*").eq("pool_id", pool!.id)
@@ -37,7 +40,8 @@ function Leaderboard() {
     <div className="card">
       <h2>{view === "schools" ? "Schools" : pool!.name}</h2>
       <p className="sub">{season.name}. {view === "schools" ? "Every school in the league, not just this pool." : season.is_replay ? "Only rounds that are locked in count." : "Scores count once a match is played."}</p>
-      {rows && view !== "schools" && <RoundRecap rows={rows} />}
+      {view !== "schools" && <PrizeLine prizes={prizes} onChange={reloadPrizes} />}
+      {rows && view !== "schools" && <RoundRecap rows={rows} prizes={prizes} />}
       <div className="seg" role="tablist">
         <button type="button" role="tab" aria-selected={view === "overall"} className={view === "overall" ? "on" : ""} onClick={() => setView("overall")}>Overall</button>
         <button type="button" role="tab" aria-selected={view === "round"} className={view === "round" ? "on" : ""} onClick={() => setView("round")}>By round</button>
