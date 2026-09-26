@@ -527,4 +527,56 @@ select pg_temp.check((select count(*) from public.chat_messages c join public.po
   'a newcomer sees what''s said after they join');
 reset role;
 
+-- School table: average points of confirmed players, ranked once a school has 3
+reset role;
+insert into public.schools (emis, name, town, province, no_fee, offers_primary, offers_matric, source) values
+  ('200100777', 'Table High School', 'Gqeberha', 'EC', false, false, true, 'test');
+delete from public.school_vouches where stage = 'high';
+delete from public.member_schools where stage = 'high';
+insert into public.member_schools (user_id, stage, emis, last_year) values
+  ('00000000-0000-0000-0000-00000000000a', 'high', '200100777', 1997),
+  ('00000000-0000-0000-0000-00000000000b', 'high', '200100777', 1997),
+  ('00000000-0000-0000-0000-00000000000c', 'high', '200100777', 1997);
+insert into public.entries (user_id, season, team_name)
+  select u, '2026', 'Team' from unnest(array['00000000-0000-0000-0000-00000000000a', '00000000-0000-0000-0000-00000000000b',
+                                             '00000000-0000-0000-0000-00000000000c']::uuid[]) u
+  on conflict do nothing;
+insert into public.school_vouches (voucher_id, member_id, stage, emis)
+  select v, m, 'high', '200100777'
+  from unnest(array['00000000-0000-0000-0000-00000000000a', '00000000-0000-0000-0000-00000000000b']::uuid[]) v,
+       unnest(array['00000000-0000-0000-0000-00000000000a', '00000000-0000-0000-0000-00000000000b']::uuid[]) m
+  where v <> m;
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000a');
+select pg_temp.check((select members = 3 and confirmed = 0 and average is null from public.school_table('2026', 'high')
+                      where emis = '200100777'), 'one vouch each confirms nobody, so the school is unranked');
+reset role;
+insert into public.school_vouches (voucher_id, member_id, stage, emis)
+  select '00000000-0000-0000-0000-00000000000c', m, 'high', '200100777'
+  from unnest(array['00000000-0000-0000-0000-00000000000a', '00000000-0000-0000-0000-00000000000b']::uuid[]) m;
+insert into public.school_vouches (voucher_id, member_id, stage, emis) values
+  ('00000000-0000-0000-0000-00000000000a', '00000000-0000-0000-0000-00000000000c', 'high', '200100777');
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000a');
+select pg_temp.check((select confirmed = 2 and average is null and points is null from public.school_table('2026', 'high')
+                      where emis = '200100777'), 'two confirmed players: points withheld');
+reset role;
+insert into public.school_vouches (voucher_id, member_id, stage, emis) values
+  ('00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-00000000000c', 'high', '200100777');
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000b');
+select pg_temp.check((select confirmed = 3 and mine and average = round(points::numeric / 3, 1)
+                      from public.school_table('2026', 'high') where emis = '200100777'), 'three confirmed players: ranked on their average');
+select pg_temp.check((select points from public.school_table('2026', 'high') where emis = '200100777')
+                     = (select coalesce(sum(s.total_pts), 0) from public.prediction_scores s join public.entries e on e.id = s.entry_id
+                        where e.season = '2026' and e.user_id in ('00000000-0000-0000-0000-00000000000a', '00000000-0000-0000-0000-00000000000b',
+                                                                   '00000000-0000-0000-0000-00000000000c')),
+                     'school points are its confirmed players'' points');
+select pg_temp.check((select count(*) from public.school_table('2026', 'primary') where emis = '200100777') = 0, 'a high school isn''t in the primary table');
+reset role;
+set role anon;
+do $$ begin
+  perform 1 from public.school_table('2026', 'high');
+  raise exception 'FAILED: anon read the school table';
+exception when insufficient_privilege then raise notice 'ok: signed-out visitors can''t read the school table';
+end $$;
+reset role;
+
 \echo ALL CHECKS PASSED
