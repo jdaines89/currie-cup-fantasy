@@ -200,7 +200,6 @@ function SchoolRow({ stage, me, saved, loading, mates, members, given, onSaved, 
                   ))}
                 </ul>
               )}
-              <p className="small muted">Only Eastern Cape schools are listed so far.</p>
             </>
           )}
           <div className="row">
