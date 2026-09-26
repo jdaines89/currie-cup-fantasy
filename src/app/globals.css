@@ -548,3 +548,7 @@ button.prize-btn { padding: 6px 12px; font-size: 13px; }
 .pl-what { display: flex; flex-direction: column; gap: 2px; font-size: 15px; min-width: 0; }
 .pl-st { font-size: 13px; color: var(--muted); white-space: nowrap; }
 .pl-st.bad { color: #e0a15a; }
+
+/* Admin numbers on /me/ */
+.numbers-h { font-size: 14px; font-weight: 600; margin: 18px 0 4px; }
+.mepage > .card { margin-top: 18px; }

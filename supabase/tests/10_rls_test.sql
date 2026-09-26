@@ -793,4 +793,30 @@ exception when insufficient_privilege then raise notice 'ok: signed-out visitors
 end $$;
 reset role;
 
+-- Retention tracking
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000b');
+select public.track('open');
+select public.track('open');
+do $$ begin
+  perform public.track('bogus');
+  raise exception 'FAILED: logged an unknown activity';
+exception when check_violation then raise notice 'ok: only known activities are logged';
+end $$;
+do $$ begin
+  perform 1 from public.activity;
+  raise exception 'FAILED: a player read the activity log';
+exception when insufficient_privilege then raise notice 'ok: players can''t read the activity log';
+end $$;
+select pg_temp.check((select count(*) from public.weekly_metrics()) = 0, 'players who aren''t admins see no metrics');
+reset role;
+select pg_temp.check((select n from public.activity where user_id = '00000000-0000-0000-0000-00000000000b'
+                      and kind = 'open' and day = (now() at time zone 'Africa/Johannesburg')::date) = 2, 'app opens are counted per day');
+select pg_temp.check(exists (select 1 from public.activity where user_id = '00000000-0000-0000-0000-00000000000b' and kind = 'call'),
+                     'making a call is logged by the database');
+update public.members set is_admin = true where user_id = '00000000-0000-0000-0000-00000000000a';
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000a');
+select pg_temp.check((select active from public.weekly_metrics(1)) >= 1, 'an admin sees this week''s active players');
+select pg_temp.check((select count(*) from public.round_participation('prize')) = 3, 'an admin sees participation per round');
+reset role;
+
 \echo ALL CHECKS PASSED

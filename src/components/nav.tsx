@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Avatar } from "@/components/avatar";
 import { readCache } from "@/lib/cache";
 import { supabase } from "@/lib/supabase";
+import { pageKind, track } from "@/lib/track";
 import type { Member } from "@/lib/types";
 
 const TABS = [
@@ -65,6 +66,12 @@ export function Nav() {
   }, []);
   const unread = useUnread(uid);
   const me = useMe(uid);
+  useEffect(() => {
+    if (!uid) return;
+    track("open");
+    const k = pageKind(path);
+    if (k) track(k);
+  }, [uid, path]);
   if (!uid) return <nav className="tabs" />;
   return (
     <>
