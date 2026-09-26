@@ -470,3 +470,10 @@ img.avatar { object-fit: cover; padding: 0; }
 .rchip:hover { background: var(--panel); color: var(--text); border-color: var(--line); }
 .rchip.mine { border-color: var(--accent-dim); background: #173a2a; }
 .rchip.mine span { color: var(--accent); }
+
+/* School table: unranked schools sit below, quieter, with no rank. */
+.schools-table.waiting li { cursor: default; background: none; }
+.schools-table.waiting strong { font-weight: 600; }
+.schools-table li { cursor: default; }
+.school-waiting { margin: 16px 0 8px; }
+.linkish.small { font-size: inherit; color: var(--accent); }
