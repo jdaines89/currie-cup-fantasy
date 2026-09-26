@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { AvatarPicker } from "@/components/avatar-picker";
 import { MySchools } from "@/components/my-schools";
+import { Numbers } from "@/components/numbers";
 import { useLeague } from "@/components/league";
 import { supabase } from "@/lib/supabase";
 
@@ -107,6 +108,7 @@ export default function MePage() {
           </div>
         </div>
       </div>
+      {me.is_admin && <Numbers season={season.id} seasonName={season.name} />}
     </div>
   );
 }
