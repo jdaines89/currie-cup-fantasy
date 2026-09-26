@@ -1,5 +1,9 @@
 # School lists
 
+`schools_<province>.json` are the EMIS school lists (2025), cleaned. The
+other eight provinces (FS, GP, KZN, LP, MP, NC, NW, WC) come from the DBE's
+national list for Quarter 3 of 2025 via `load_national.py`, cleaned the same way.
+
 `schools_ec.json` is the Eastern Cape's EMIS school list (2025), cleaned:
 coordinates fixed (the source swaps latitude and longitude), town names made
 consistent, early-childhood centres dropped, and every contact detail
@@ -11,6 +15,7 @@ statement asks for the file; run the second a few seconds later.
 
 ```sql
 select net.http_get('https://raw.githubusercontent.com/jdaines89/scrumline/main/supabase/data/schools_ec.json');
+-- or schools_fs.json, schools_gp.json, schools_kzn.json, ... one province at a time
 
 insert into public.schools
 select * from json_populate_recordset(null::public.schools,
