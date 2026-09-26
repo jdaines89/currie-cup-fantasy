@@ -20,7 +20,7 @@ interface PredScore {
   result_pts: number; margin_pts: number; near_pts: number; exact_pts: number;
 }
 
-// What each chip on a scored match means. Mirrors the prediction_scores view.
+// What each chip on a scored match means. Mirrors public.compute_points() (stored in prediction_points).
 const PARTS = [
   { key: "result_pts", code: "RES", max: "6", what: "Right result: you picked the winner, or the draw" },
   { key: "margin_pts", code: "MAR", max: "5", what: "Exact winning margin" },
